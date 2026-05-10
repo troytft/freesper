@@ -1,0 +1,6 @@
+[settings]
+experimental = true
+
+[tools]
+tuist = "4.192.3"
+"spm:apple/swift-format" = "602.0.0"

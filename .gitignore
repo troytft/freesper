@@ -1,0 +1,26 @@
+# Tuist
+Derived/
+*.xcworkspace
+*.xcodeproj
+.build/
+Tuist/.build/
+Tuist/Dependencies/
+
+# Swift / Xcode
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# AI
+.claude/
+
+# Local environment
+.env
