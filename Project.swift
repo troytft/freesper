@@ -1,6 +1,9 @@
 import ProjectDescription
 
 let developmentTeam = Environment.developmentTeam.getString(default: "")
+let codeSignIdentity = Environment.codeSignIdentity.getString(default: "Apple Development")
+let codeSigningAllowed = Environment.codeSigningAllowed.getString(default: "YES")
+let codeSigningRequired = Environment.codeSigningRequired.getString(default: "YES")
 
 let project = Project(
     name: "Freesper",
@@ -16,7 +19,9 @@ let project = Project(
             "ENABLE_HARDENED_RUNTIME": "YES",
             "CODE_SIGN_STYLE": "Manual",
             "DEVELOPMENT_TEAM": .string(developmentTeam),
-            "CODE_SIGN_IDENTITY": "Apple Development",
+            "CODE_SIGN_IDENTITY": .string(codeSignIdentity),
+            "CODE_SIGNING_ALLOWED": .string(codeSigningAllowed),
+            "CODE_SIGNING_REQUIRED": .string(codeSigningRequired),
             "PROVISIONING_PROFILE_SPECIFIER": "",
             "ARCHS": "arm64",
             "ONLY_ACTIVE_ARCH": "YES",
@@ -54,7 +59,9 @@ let project = Project(
             settings: .settings(
                 base: [
                     "CODE_SIGN_STYLE": "Manual",
-                    "CODE_SIGN_IDENTITY": "Apple Development",
+                    "CODE_SIGN_IDENTITY": .string(codeSignIdentity),
+                    "CODE_SIGNING_ALLOWED": .string(codeSigningAllowed),
+                    "CODE_SIGNING_REQUIRED": .string(codeSigningRequired),
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "PROVISIONING_PROFILE_SPECIFIER": "",
                 ]
