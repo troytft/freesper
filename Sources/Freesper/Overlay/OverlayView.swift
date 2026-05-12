@@ -34,8 +34,8 @@ struct OverlayView: View {
         .frame(width: capsuleWidth, height: capsuleHeight)
     }
     .frame(
-      width: OverlayMetrics.expandedCapsuleSize.width,
-      height: OverlayMetrics.expandedCapsuleSize.height,
+      width: OverlayMetrics.hostSize.width,
+      height: OverlayMetrics.hostSize.height,
       alignment: .center
     )
     .animation(.easeInOut(duration: 0.22), value: model.phase)

@@ -55,7 +55,7 @@ struct WaveformView: View {
   /// sit around 0.02. A `sqrt` curve approximates perceptual loudness and
   /// keeps quiet sounds visible without clipping loud ones.
   private func scale(_ rms: Float) -> CGFloat {
-    let amplified = min(1, max(0, rms * 4.5))
+    let amplified = min(1, max(0, rms * 2))
     return CGFloat(sqrt(amplified))
   }
 }
