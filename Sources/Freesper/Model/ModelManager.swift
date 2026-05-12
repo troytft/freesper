@@ -90,9 +90,7 @@ final class ModelManager {
       // ProgressHandler is called on an unspecified queue; bounce through
       // the main actor before touching `readiness`.
       let progressHandler: DownloadUtils.ProgressHandler = { [weak self] snapshot in
-        Task { @MainActor [weak self] in
-          self?.publishProgress(snapshot.fractionCompleted)
-        }
+        Task { await self?.publishProgress(snapshot.fractionCompleted) }
       }
       do {
         _ = try await AsrModels.download(
@@ -101,17 +99,15 @@ final class ModelManager {
           progressHandler: progressHandler
         )
         try Task.checkCancellation()
-        await MainActor.run { self?.finishSuccess() }
+        await self?.finishSuccess()
       } catch is CancellationError {
-        await MainActor.run { self?.finishCancelled() }
+        await self?.finishCancelled()
       } catch {
         // `error` may not be Sendable, so rephrase as a Sendable string for
         // the log and a Sendable wrapper for the readiness payload.
         let message = error.localizedDescription
         log.error("[model] download failed: \(message, privacy: .public)")
-        await MainActor.run {
-          self?.finishFailed(ModelError.downloadFailed(message))
-        }
+        await self?.finishFailed(ModelError.downloadFailed(message))
       }
     }
   }
