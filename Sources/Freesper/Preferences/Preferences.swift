@@ -31,6 +31,13 @@ final class Preferences {
     }
   }
 
+  var showDockIcon: Bool {
+    didSet {
+      guard oldValue != showDockIcon else { return }
+      defaults.set(showDockIcon, forKey: Keys.showDockIcon)
+    }
+  }
+
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
     self.microphoneUID = defaults.string(forKey: Keys.microphoneUID)
@@ -40,11 +47,14 @@ final class Preferences {
     self.hotkeyMode =
       defaults.string(forKey: Keys.hotkeyMode)
       .flatMap(HotkeyMode.init(rawValue:)) ?? .hold
+    self.showDockIcon =
+      (defaults.object(forKey: Keys.showDockIcon) as? Bool) ?? true
   }
 
   private enum Keys {
     static let microphoneUID = "preferences.microphoneUID"
     static let hotkeyPreset = "preferences.hotkeyPreset"
     static let hotkeyMode = "preferences.hotkeyMode"
+    static let showDockIcon = "preferences.showDockIcon"
   }
 }

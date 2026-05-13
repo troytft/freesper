@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// Coordinates the Setup window: tracks who last opened it so we know whether
@@ -20,6 +19,8 @@ final class SetupCoordinator {
   private let readiness: AppReadiness
   @ObservationIgnored
   private let overlay: OverlayController
+  @ObservationIgnored
+  private let activationPolicy: ActivationPolicyController
 
   /// Provided by the SwiftUI layer once it has access to the environment
   /// `openWindow` / `dismissWindow` actions.
@@ -28,9 +29,14 @@ final class SetupCoordinator {
   @ObservationIgnored
   var dismissWindow: (() -> Void)?
 
-  init(readiness: AppReadiness, overlay: OverlayController) {
+  init(
+    readiness: AppReadiness,
+    overlay: OverlayController,
+    activationPolicy: ActivationPolicyController
+  ) {
     self.readiness = readiness
     self.overlay = overlay
+    self.activationPolicy = activationPolicy
   }
 
   /// Called once the SwiftUI environment actions are available. Performs
@@ -43,7 +49,7 @@ final class SetupCoordinator {
   /// Called from the menu "Open Setup…" item.
   func openFromMenu() {
     openedBySystem = false
-    NSApp.activate(ignoringOtherApps: true)
+    activationPolicy.activate()
     openWindow?()
   }
 
@@ -70,7 +76,7 @@ final class SetupCoordinator {
       }
     } else {
       overlay.stop()
-      NSApp.activate(ignoringOtherApps: true)
+      activationPolicy.activate()
       openWindow?()
       openedBySystem = true
     }

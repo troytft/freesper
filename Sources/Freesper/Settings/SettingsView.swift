@@ -1,11 +1,16 @@
 import SwiftUI
 
 struct SettingsView: View {
-  let preferences: Preferences
+  @Bindable var preferences: Preferences
   let deviceCatalog: AudioDeviceCatalog
+  let activationPolicy: ActivationPolicyController
 
   var body: some View {
     Form {
+      Section("General") {
+        Toggle("Show in Dock", isOn: $preferences.showDockIcon)
+      }
+
       Section("Microphone") {
         MicrophonePicker(
           preferences: preferences,
@@ -14,14 +19,14 @@ struct SettingsView: View {
       }
 
       Section("Push-to-talk") {
-        Picker("Hotkey", selection: presetBinding) {
+        Picker("Hotkey", selection: $preferences.hotkeyPreset) {
           ForEach(HotkeyPreset.allCases, id: \.self) { preset in
             Text(preset.label).tag(preset)
           }
         }
         .pickerStyle(.menu)
 
-        Picker("Mode", selection: modeBinding) {
+        Picker("Mode", selection: $preferences.hotkeyMode) {
           Text("Hold").tag(HotkeyMode.hold)
           Text("Toggle").tag(HotkeyMode.toggle)
         }
@@ -31,29 +36,17 @@ struct SettingsView: View {
     .formStyle(.grouped)
     .frame(width: 460)
     .frame(minHeight: 240)
-  }
-
-  private var presetBinding: Binding<HotkeyPreset> {
-    Binding(
-      get: { preferences.hotkeyPreset },
-      set: { preferences.hotkeyPreset = $0 }
-    )
-  }
-
-  private var modeBinding: Binding<HotkeyMode> {
-    Binding(
-      get: { preferences.hotkeyMode },
-      set: { preferences.hotkeyMode = $0 }
-    )
+    .onAppear { activationPolicy.acquire(.settings) }
+    .onDisappear { activationPolicy.release(.settings) }
   }
 }
 
 private struct MicrophonePicker: View {
-  let preferences: Preferences
+  @Bindable var preferences: Preferences
   let deviceCatalog: AudioDeviceCatalog
 
   var body: some View {
-    Picker("Input device", selection: selectionBinding) {
+    Picker("Input device", selection: $preferences.microphoneUID) {
       Text("System default").tag(String?.none)
       ForEach(deviceCatalog.devices) { device in
         Text(label(for: device)).tag(String?.some(device.uid))
@@ -70,13 +63,6 @@ private struct MicrophonePicker: View {
       }
     }
     .pickerStyle(.menu)
-  }
-
-  private var selectionBinding: Binding<String?> {
-    Binding(
-      get: { preferences.microphoneUID },
-      set: { preferences.microphoneUID = $0 }
-    )
   }
 
   private func label(for device: AudioInputDevice) -> String {

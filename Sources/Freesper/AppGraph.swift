@@ -17,6 +17,7 @@ final class AppGraph {
   let dictation: DictationCoordinator
   let hotkey: HotkeyController
   let setupCoordinator: SetupCoordinator
+  let activationPolicy: ActivationPolicyController
 
   private var hasStarted = false
 
@@ -25,6 +26,7 @@ final class AppGraph {
     let readiness = AppReadiness(log: log)
     let preferences = Preferences()
     let deviceCatalog = AudioDeviceCatalog(log: log)
+    let activationPolicy = ActivationPolicyController()
     let modelManager = ModelManager(readiness: readiness, log: log)
     let audio = AudioCaptureService(
       preferences: preferences,
@@ -49,7 +51,11 @@ final class AppGraph {
       readiness: readiness,
       log: log
     )
-    let setupCoordinator = SetupCoordinator(readiness: readiness, overlay: overlay)
+    let setupCoordinator = SetupCoordinator(
+      readiness: readiness,
+      overlay: overlay,
+      activationPolicy: activationPolicy
+    )
 
     self.readiness = readiness
     self.preferences = preferences
@@ -61,6 +67,7 @@ final class AppGraph {
     self.dictation = dictation
     self.hotkey = hotkey
     self.setupCoordinator = setupCoordinator
+    self.activationPolicy = activationPolicy
   }
 
   /// Idempotent — SwiftUI may call onAppear more than once per scene flip.
@@ -70,6 +77,7 @@ final class AppGraph {
     hasStarted = true
 
     audio.observePreferences()
+    observePreferences()
 
     // Re-check permissions whenever the user comes back to the app —
     // typical moment after they've toggled something in System Settings.
@@ -88,6 +96,23 @@ final class AppGraph {
     Task { @MainActor in
       await bootstrap()
       setupCoordinator.start()
+    }
+  }
+
+  private func observePreferences() {
+    applyShowDockIconPreference()
+    observe { [weak self] in
+      _ = self?.preferences.showDockIcon
+    } onChange: { [weak self] in
+      self?.applyShowDockIconPreference()
+    }
+  }
+
+  private func applyShowDockIconPreference() {
+    if preferences.showDockIcon {
+      activationPolicy.acquire(.userPreference)
+    } else {
+      activationPolicy.release(.userPreference)
     }
   }
 

@@ -15,8 +15,43 @@
 
 ## Comments
 
-- **Default to no comment.** Don't restate what names and signatures
-  already say. Write a comment only when the WHY is non-obvious — a
-  framework gotcha, magic-number rationale, a workaround, a surprising
-  invariant. If removing it wouldn't confuse a future reader, don't
-  write it.
+- **No comments by default.** The bar for writing a comment is very
+  high. Code must explain itself through naming, types, and structure.
+  If a name or signature isn't clear — improve the name, don't add a
+  comment.
+
+- **Do not write** comments that:
+  - describe WHAT the code does (a well-named function or variable
+    already does that);
+  - reference the current task, fix, PR, or issue ("added for X",
+    "fixes #123", "used by Y", "handles the case from …");
+  - restate framework or language behavior that can be looked up in
+    the documentation;
+  - mark removed code (`// removed X`, commented-out blocks) or
+    TODO/FIXME without concrete context.
+
+- **A comment is allowed only** when the WHY is genuinely non-obvious
+  and the next reader would otherwise break the code or waste
+  significant time: a hidden invariant, a specific framework gotcha
+  that already bit us, a counterintuitive workaround with the reason.
+  One short line.
+
+- **If in doubt — don't write it.**
+
+## Folders
+
+- **A folder must represent a clear concept** — a domain, feature,
+  screen, or a coherent group of related things. Before creating
+  one, be able to say in one sentence what concept it represents.
+
+- **Single-file folders are fine when intentional.** If this is the
+  first file of a group you can already name (you know the next 2–3
+  files that will join it shortly) — create the folder. If you're
+  just giving one file a "home" because it felt lonely — don't.
+
+- **Match the existing structure.** Before inventing new
+  organization, look at how the surrounding code is organized and
+  follow that pattern.
+
+- **If you can't explain what the folder is for — don't create it.**
+  Flat next to similar files is the default.
