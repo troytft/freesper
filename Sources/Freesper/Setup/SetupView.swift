@@ -4,6 +4,7 @@ struct SetupView: View {
   let readiness: AppReadiness
   let modelManager: ModelManager
   let coordinator: SetupCoordinator
+  let activationPolicy: ActivationPolicyController
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
@@ -43,6 +44,8 @@ struct SetupView: View {
     }
     .padding(24)
     .frame(width: 460)
+    .onAppear { activationPolicy.acquire(.setup) }
+    .onDisappear { activationPolicy.release(.setup) }
   }
 }
 

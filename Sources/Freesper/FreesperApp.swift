@@ -4,11 +4,12 @@ import SwiftUI
 @main
 struct FreesperApp: App {
   @State private var graph = AppGraph()
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
   var body: some Scene {
     MenuBarExtra {
       Button("Open Setup…") { graph.setupCoordinator.openFromMenu() }
-      OpenSettingsMenuButton()
+      OpenSettingsMenuButton(activationPolicy: graph.activationPolicy)
       Divider()
       Button("About") {
         NSApplication.shared.orderFrontStandardAboutPanel(nil)
@@ -19,7 +20,7 @@ struct FreesperApp: App {
       }
       .keyboardShortcut("q")
     } label: {
-      MenuBarLabel(graph: graph)
+      MenuBarLabel(graph: graph, appDelegate: appDelegate)
     }
     .menuBarExtraStyle(.menu)
 
@@ -27,7 +28,8 @@ struct FreesperApp: App {
       SetupView(
         readiness: graph.readiness,
         modelManager: graph.modelManager,
-        coordinator: graph.setupCoordinator
+        coordinator: graph.setupCoordinator,
+        activationPolicy: graph.activationPolicy
       )
     }
     .windowResizability(.contentSize)
@@ -35,22 +37,23 @@ struct FreesperApp: App {
     Settings {
       SettingsView(
         preferences: graph.preferences,
-        deviceCatalog: graph.deviceCatalog
+        deviceCatalog: graph.deviceCatalog,
+        activationPolicy: graph.activationPolicy
       )
     }
   }
 }
 
-/// `LSUIElement` accessory apps don't auto-activate when a window opens, so a
-/// plain `SettingsLink` ends up showing the window without key-window focus.
-/// Activating *before* `openSettings()` makes the new window come up keyed
-/// and focusable.
+/// `SettingsLink` doesn't activate the app before showing the window, so on
+/// LSUIElement builds the new window comes up without key focus. Pre-activate
+/// via the policy controller so it appears keyed.
 private struct OpenSettingsMenuButton: View {
+  let activationPolicy: ActivationPolicyController
   @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     Button("Settings…") {
-      NSApp.activate(ignoringOtherApps: true)
+      activationPolicy.activate()
       openSettings()
     }
   }
@@ -62,14 +65,24 @@ private struct OpenSettingsMenuButton: View {
 /// `SetupCoordinator` and to kick off the one-time bootstrap.
 private struct MenuBarLabel: View {
   let graph: AppGraph
+  let appDelegate: AppDelegate
   @Environment(\.openWindow) private var openWindow
   @Environment(\.dismissWindow) private var dismissWindow
+  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     Image(systemName: graph.readiness.iconName)
       .onAppear {
         graph.setupCoordinator.openWindow = { openWindow(id: SetupWindow.id) }
         graph.setupCoordinator.dismissWindow = { dismissWindow(id: SetupWindow.id) }
+        appDelegate.onReopen = { [graph, openWindow, openSettings] in
+          graph.activationPolicy.activate()
+          if graph.readiness.isReady {
+            openSettings()
+          } else {
+            openWindow(id: SetupWindow.id)
+          }
+        }
         graph.runOnce()
       }
   }
