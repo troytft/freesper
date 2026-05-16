@@ -71,7 +71,7 @@ private struct MenuBarLabel: View {
   @Environment(\.openSettings) private var openSettings
 
   var body: some View {
-    Image(systemName: graph.readiness.iconName)
+    Image("MenuBarIcon")
       .onAppear {
         graph.setupCoordinator.openWindow = { openWindow(id: SetupWindow.id) }
         graph.setupCoordinator.dismissWindow = { dismissWindow(id: SetupWindow.id) }

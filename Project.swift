@@ -44,11 +44,13 @@ let project = Project(
                 "CFBundleDisplayName": "Freesper",
                 "CFBundleShortVersionString": "0.1.0",
                 "CFBundleVersion": "1",
+                "CFBundleIconName": "AppIcon",
                 "LSMinimumSystemVersion": "14.0",
                 "LSUIElement": true,
                 "NSMicrophoneUsageDescription": "Freesper uses the microphone to capture speech and convert it to text.",
             ]),
             sources: ["Sources/Freesper/**"],
+            resources: ["AppIcon.icon", "Assets.xcassets"],
             entitlements: .dictionary([
                 "com.apple.security.app-sandbox": false,
                 "com.apple.security.device.audio-input": true,

@@ -20,10 +20,6 @@ final class AppReadiness {
     mic == .granted && accessibility == .granted && model.isReady
   }
 
-  var iconName: String {
-    isReady ? "mic" : "exclamationmark.triangle"
-  }
-
   func refreshPermissions() {
     mic = MicrophonePermission.check()
     accessibility = AccessibilityPermission.check(log: log)
