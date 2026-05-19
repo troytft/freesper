@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct AboutView: View {
@@ -7,7 +8,7 @@ struct AboutView: View {
 
   var body: some View {
     VStack(spacing: 16) {
-      Image("AppIcon")
+      Image(nsImage: NSApplication.shared.applicationIconImage)
         .resizable()
         .frame(width: 96, height: 96)
       VStack(spacing: 4) {
