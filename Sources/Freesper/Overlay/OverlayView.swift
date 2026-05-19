@@ -6,32 +6,27 @@ struct OverlayView: View {
   @State private var contentOpacity: Double = 0
 
   private var isExpanded: Bool { model.phase != .idle }
-  private var capsuleWidth: CGFloat {
-    isExpanded ? OverlayMetrics.expandedCapsuleSize.width : OverlayMetrics.idleCapsuleSize.width
-  }
-  private var capsuleHeight: CGFloat {
-    isExpanded ? OverlayMetrics.expandedCapsuleSize.height : OverlayMetrics.idleCapsuleSize.height
+  private var capsuleSize: CGSize {
+    isExpanded ? OverlayMetrics.expandedCapsuleSize : OverlayMetrics.idleCapsuleSize
   }
 
   var body: some View {
     ZStack {
       Capsule(style: .continuous)
-        .fill(Color.black)
-        .frame(width: capsuleWidth, height: capsuleHeight)
+        .fill(Color.black.opacity(0.7))
+        .frame(width: capsuleSize.width, height: capsuleSize.height)
 
       contentRow
-        .frame(width: capsuleWidth, height: capsuleHeight)
+        .frame(width: capsuleSize.width, height: capsuleSize.height)
         .clipShape(Capsule(style: .continuous))
         .opacity(contentOpacity)
 
       Capsule(style: .continuous)
         .stroke(
-          isExpanded
-            ? Color(red: 48 / 255, green: 48 / 255, blue: 47 / 255)
-            : Color(red: 128 / 255, green: 128 / 255, blue: 128 / 255),
+          isExpanded ? Color(white: 48 / 255) : Color(white: 128 / 255),
           lineWidth: 1
         )
-        .frame(width: capsuleWidth, height: capsuleHeight)
+        .frame(width: capsuleSize.width, height: capsuleSize.height)
     }
     .frame(
       width: OverlayMetrics.hostSize.width,

@@ -10,6 +10,7 @@ final class AppGraph {
   let readiness: AppReadiness
   let preferences: Preferences
   let deviceCatalog: AudioDeviceCatalog
+  let activationPolicy: ActivationPolicyController
   let modelManager: ModelManager
   let audio: AudioCaptureService
   let transcription: TranscriptionService
@@ -17,7 +18,7 @@ final class AppGraph {
   let dictation: DictationCoordinator
   let hotkey: HotkeyController
   let setupCoordinator: SetupCoordinator
-  let activationPolicy: ActivationPolicyController
+  let mainWindowCoordinator: MainWindowCoordinator
 
   private var hasStarted = false
 
@@ -56,10 +57,12 @@ final class AppGraph {
       overlay: overlay,
       activationPolicy: activationPolicy
     )
+    let mainWindowCoordinator = MainWindowCoordinator(activationPolicy: activationPolicy)
 
     self.readiness = readiness
     self.preferences = preferences
     self.deviceCatalog = deviceCatalog
+    self.activationPolicy = activationPolicy
     self.modelManager = modelManager
     self.audio = audio
     self.transcription = transcription
@@ -67,7 +70,7 @@ final class AppGraph {
     self.dictation = dictation
     self.hotkey = hotkey
     self.setupCoordinator = setupCoordinator
-    self.activationPolicy = activationPolicy
+    self.mainWindowCoordinator = mainWindowCoordinator
   }
 
   /// Idempotent — SwiftUI may call onAppear more than once per scene flip.
