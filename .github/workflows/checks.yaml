@@ -20,3 +20,13 @@ jobs:
           TUIST_CODE_SIGNING_ALLOWED: "NO"
           TUIST_CODE_SIGNING_REQUIRED: "NO"
           TUIST_CODE_SIGN_IDENTITY: ""
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs
+          path: |
+            ~/.local/state/tuist/sessions/**/logs.txt
+            ~/.cache/tuist/Runs/**
+            .build/derived/Logs/**
+          if-no-files-found: ignore
