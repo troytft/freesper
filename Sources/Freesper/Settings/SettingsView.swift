@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
   @Bindable var preferences: Preferences
   let deviceCatalog: AudioDeviceCatalog
-  let activationPolicy: ActivationPolicyController
 
   var body: some View {
     Form {
@@ -34,10 +33,6 @@ struct SettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .frame(width: 460)
-    .frame(minHeight: 240)
-    .onAppear { activationPolicy.acquire(.settings) }
-    .onDisappear { activationPolicy.release(.settings) }
   }
 }
 

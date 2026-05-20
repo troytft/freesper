@@ -16,32 +16,27 @@ struct WaveformView: View {
   static let barCount = 16
   private let barWidth: CGFloat = 3
   private let barSpacing: CGFloat = 3
-  private let minBarHeight: CGFloat = 2
+  private let minBarHeight: CGFloat = 3
+  private let maxBarHeight: CGFloat = 18
 
   var body: some View {
-    GeometryReader { geo in
-      HStack(alignment: .center, spacing: barSpacing) {
-        ForEach(0..<Self.barCount, id: \.self) { index in
-          Capsule(style: .continuous)
-            .fill(Color.white.opacity(0.92))
-            .frame(
-              width: barWidth,
-              height: barHeight(at: index, maxHeight: geo.size.height)
-            )
-        }
+    HStack(alignment: .center, spacing: barSpacing) {
+      ForEach(0..<Self.barCount, id: \.self) { index in
+        Capsule(style: .continuous)
+          .fill(Color.white.opacity(0.92))
+          .frame(width: barWidth, height: barHeight(at: index))
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
-    .frame(height: 28)
+    .frame(maxWidth: .infinity, maxHeight: maxBarHeight, alignment: .center)
     .animation(.linear(duration: 0.06), value: levels)
     .animation(.easeInOut(duration: 0.18), value: phase)
   }
 
-  private func barHeight(at index: Int, maxHeight: CGFloat) -> CGFloat {
+  private func barHeight(at index: Int) -> CGFloat {
     switch phase {
     case .listening:
       let raw = index < levels.count ? levels[index] : 0
-      return minBarHeight + (maxHeight - minBarHeight) * scale(raw)
+      return minBarHeight + (maxBarHeight - minBarHeight) * scale(raw)
 
     case .transcribing, .idle, .hint:
       // Static snapshot off the listening path; the live shimmer is
@@ -51,11 +46,10 @@ struct WaveformView: View {
     }
   }
 
-  /// Speech RMS rarely exceeds ~0.3 linear amplitude, and quiet syllables
-  /// sit around 0.02. A `sqrt` curve approximates perceptual loudness and
-  /// keeps quiet sounds visible without clipping loud ones.
   private func scale(_ rms: Float) -> CGFloat {
-    let amplified = min(1, max(0, rms * 2))
+    let noiseFloor: Float = 0.008
+    let aboveFloor = max(0, rms - noiseFloor)
+    let amplified = min(1, aboveFloor * 6)
     return CGFloat(sqrt(amplified))
   }
 }
