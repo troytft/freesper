@@ -64,6 +64,11 @@
       }
     }
 
+    private struct AnimationInputs: Equatable {
+      var animate: Bool
+      var loudness: Loudness
+    }
+
     var body: some View {
       @Bindable var model = model
       VStack(spacing: 24) {
@@ -101,24 +106,29 @@
         }
         .formStyle(.grouped)
       }
-      .task(id: animateLevels) {
+      .task(id: AnimationInputs(animate: animateLevels, loudness: loudness)) {
         guard animateLevels else {
-          model.levels = []
+          model.barIntensities = []
           return
         }
+        var normalizer = WaveformNormalizer()
         let start = Date()
         while !Task.isCancelled {
           let elapsed = Date().timeIntervalSince(start)
-          let peak = loudness.peakRMS
-          let floor = peak * 0.15
-          model.levels = (0..<WaveformView.barCount).map { index in
-            let phase = elapsed * 4 + Double(index) * 0.42
-            let envelope = sin(.pi * Double(index) / Double(WaveformView.barCount - 1))
-            let unit = (sin(phase) + 1) / 2 * envelope
-            return Float(floor) + Float(unit) * (peak - Float(floor))
-          }
+          let rms = Self.fakeRMSWindow(elapsed: elapsed, peak: loudness.peakRMS)
+          model.barIntensities = normalizer.intensities(forRecent: rms)
           try? await Task.sleep(for: .milliseconds(33))
         }
+      }
+    }
+
+    private static func fakeRMSWindow(elapsed: TimeInterval, peak: Float) -> [Float] {
+      let floor = peak * 0.15
+      return (0..<WaveformView.barCount).map { index in
+        let phase = elapsed * 4 + Double(index) * 0.42
+        let envelope = sin(.pi * Double(index) / Double(WaveformView.barCount - 1))
+        let unit = (sin(phase) + 1) / 2 * envelope
+        return floor + Float(unit) * (peak - floor)
       }
     }
 

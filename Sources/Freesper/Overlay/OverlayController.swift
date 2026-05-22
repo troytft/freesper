@@ -9,7 +9,7 @@ import SwiftUI
 ///   1. `start()`           — at app launch: pill becomes always-visible (idle).
 ///   2. hover               — controller flips idle ↔ hint and resizes the panel.
 ///   3. `setListening()`    — keyDown: panel expands, level polling starts.
-///   4. `setTranscribing()` — keyUp: levels stop, shimmer takes over.
+///   4. `setTranscribing()` — keyUp: levels stop, a progress spinner shows.
 ///   5. `setIdle()`         — transcript delivered: panel shrinks back to the pill.
 @MainActor
 final class OverlayController {
@@ -19,6 +19,7 @@ final class OverlayController {
   private let model = OverlayState()
   private var panel: OverlayPanel?
   private var pollTask: Task<Void, Never>?
+  private var normalizer = WaveformNormalizer()
 
   /// The panel is a fixed-size canvas hosting the SwiftUI overlay. Phase
   /// changes resize the *visible capsule* inside SwiftUI; the NSPanel and
@@ -51,15 +52,14 @@ final class OverlayController {
     panel?.orderOut(nil)
     panel = nil
     model.phase = .idle
-    model.levels = []
+    model.barIntensities = []
     log.info("Overlay stopped")
   }
 
   func setListening() {
     model.phase = .listening
-    model.levels = audio.snapshotRecentRMS(
-      count: WaveformView.barCount
-    )
+    normalizer.reset()
+    refreshWaveform()
     startLevelPolling()
   }
 
@@ -68,13 +68,10 @@ final class OverlayController {
     model.phase = .transcribing
   }
 
-  /// Drop back to the idle pill. `lastVisiblePhase` keeps tracking the
-  /// previous non-idle value so the content fades out alongside the
-  /// background rather than popping out immediately.
   func setIdle() {
     stopLevelPolling()
     model.phase = .idle
-    model.levels = []
+    model.barIntensities = []
   }
 
   private func applyHotkeyLabel() {
@@ -139,12 +136,15 @@ final class OverlayController {
     pollTask = Task { @MainActor [weak self] in
       while !Task.isCancelled {
         guard let self else { return }
-        self.model.levels = self.audio.snapshotRecentRMS(
-          count: WaveformView.barCount
-        )
+        self.refreshWaveform()
         try? await Task.sleep(for: .milliseconds(33))
       }
     }
+  }
+
+  private func refreshWaveform() {
+    let rms = audio.snapshotRecentRMS(count: WaveformView.barCount)
+    model.barIntensities = normalizer.intensities(forRecent: rms)
   }
 
   private func stopLevelPolling() {
