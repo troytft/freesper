@@ -24,3 +24,6 @@ DerivedData/
 
 # Local environment
 .env
+
+# Preview build output
+dist/
