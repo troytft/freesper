@@ -10,19 +10,10 @@ final class OverlayState {
     case transcribing
   }
 
-  /// Tracked separately so that when `phase` returns to `.idle`, the content
-  /// keeps rendering through the fade-out animation instead of being yanked
-  /// from the view hierarchy the instant the phase flips.
-  private(set) var lastVisiblePhase: Phase = .hint
+  var phase: Phase = .idle
 
-  var phase: Phase = .idle {
-    didSet {
-      if phase != .idle { lastVisiblePhase = phase }
-    }
-  }
-
-  /// Recent RMS levels, oldest → newest.
-  var levels: [Float] = []
+  /// Per-bar waveform intensities in 0…1, oldest → newest.
+  var barIntensities: [Float] = []
   var hotkeyLabel: String = ""
 }
 
@@ -36,6 +27,7 @@ enum OverlayMetrics {
 
   static let idleCapsuleSize = CGSize(width: 48, height: 6)
   static let expandedCapsuleSize = CGSize(width: 140, height: 34)
+  static let transcribingCapsuleSize = CGSize(width: 34, height: 34)
 
   /// Tracking rect that fires `onEnterIdleZone`. Larger than the visible
   /// pill so the cursor catches the pill on a casual mouseover.
