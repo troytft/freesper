@@ -6,46 +6,46 @@ import Foundation
 /// bar intensities (0…1), adapting its full-bar reference to the microphone
 /// so every mic fills the overlay equally.
 struct WaveformNormalizer {
-  private let noiseFloor: Float = 0.008
+  private static let noiseFloor: Float = 0.008
 
   /// Lower bound on the full-bar reference: keeps ambient noise from filling
   /// the bars while nobody speaks. Must stay above `noiseFloor`.
-  private let minReference: Float = 0.03
+  private static let minReference: Float = 0.03
 
   /// Reference seed — between a quiet built-in mic and a loud headset.
-  private let initialReference: Float = 0.05
+  private static let initialReference: Float = 0.05
 
   /// Per-tick easing of the reference toward the recent peak. Kept gradual so
   /// the reference tracks the microphone, not individual syllables — a
   /// reference that snapped to every syllable would rescale all bars at once
   /// and make the waveform pump. Attack (rising) outpaces release (falling).
-  private let attack: Float = 0.10
-  private let release: Float = 0.027
+  private static let attack: Float = 0.10
+  private static let release: Float = 0.027
 
   private var reference: Float
 
   init() {
-    reference = initialReference
+    reference = Self.initialReference
   }
 
   mutating func reset() {
-    reference = initialReference
+    reference = Self.initialReference
   }
 
   mutating func intensities(forRecent rmsWindow: [Float]) -> [Float] {
     easeReference(towardPeak: rmsWindow.max() ?? 0)
 
-    let span = reference - noiseFloor
+    let span = reference - Self.noiseFloor
     return rmsWindow.map { rms in
-      let signal = max(0, rms - noiseFloor)
+      let signal = max(0, rms - Self.noiseFloor)
       let filled = min(1, signal / span)
       return sqrt(filled)
     }
   }
 
   private mutating func easeReference(towardPeak peak: Float) {
-    let rate = peak > reference ? attack : release
+    let rate = peak > reference ? Self.attack : Self.release
     let eased = reference + (peak - reference) * rate
-    reference = max(minReference, eased)
+    reference = max(Self.minReference, eased)
   }
 }

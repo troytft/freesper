@@ -4,6 +4,10 @@ import SwiftUI
 struct OverlayView: View {
   let model: OverlayState
   @State private var contentOpacity: Double = 0
+
+  /// Lags `model.phase`: the capsule resizes immediately on the live phase,
+  /// but the content swap waits for the fade-out so the old content isn't
+  /// yanked mid-animation.
   @State private var displayedPhase: OverlayState.Phase = .hint
 
   private var isExpanded: Bool { model.phase != .idle }
@@ -60,6 +64,7 @@ struct OverlayView: View {
       withAnimation(.easeIn(duration: 0.10)) {
         contentOpacity = 0
       } completion: {
+        guard model.phase == newPhase else { return }
         displayedPhase = newPhase
         withAnimation(.easeOut(duration: 0.12)) { contentOpacity = 1 }
       }
