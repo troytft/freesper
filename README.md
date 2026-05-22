@@ -1,53 +1,54 @@
 # Freesper
 
-## Превью-сборка для тестировщика
+## Preview build for a tester
 
-Превью-сборка — это **не релиз**: она не нотаризована Apple и подписана
-ad-hoc. Она годится только для того, чтобы дать знакомому потестировать.
+A preview build is **not a release**: it is not notarized by Apple and is
+signed ad-hoc. It is only good for handing the app to someone you know so
+they can test it.
 
-Собрать:
+Build:
 
 ```
 make preview-build
 ```
 
-Готовый архив — `dist/Freesper.zip`. Его и отправляешь тестировщику.
+The resulting archive is `dist/Freesper.zip`. That is what you send to the
+tester.
 
-### Что сделать тестировщику
+### What the tester needs to do
 
-Так как сборка не нотаризована, macOS заблокирует её при первом запуске —
-это ожидаемо.
+Since the build is not notarized, macOS will block it on first launch —
+this is expected.
 
-1. Распаковать `Freesper.zip` и переместить `Freesper.app` в «Программы».
-2. Снять карантин — выполнить в Терминале:
+1. Unpack `Freesper.zip` and move `Freesper.app` to Applications.
+2. Remove the quarantine attribute — run in Terminal:
 
    ```
    xattr -cr /Applications/Freesper.app
    ```
 
-   После этого приложение открывается обычным двойным кликом.
+   After that the app opens with a regular double click.
 
-Если пропустить шаг 2, macOS покажет «не удаётся открыть, разработчик не
-подтверждён». Тогда: **Системные настройки → Конфиденциальность и
-безопасность**, пролистать вниз до сообщения о Freesper и нажать
-**«Открыть всё равно»**.
+If you skip step 2, macOS will show "cannot be opened because the developer
+cannot be verified". In that case: **System Settings → Privacy & Security**,
+scroll down to the message about Freesper and click **"Open Anyway"**.
 
-### Доступ к микрофону
+### Microphone access
 
-При первом использовании Freesper запросит доступ к микрофону — нужно
-разрешить. Проверить или выдать вручную: **Системные настройки →
-Конфиденциальность и безопасность → Микрофон**.
+On first use Freesper will request microphone access — you need to allow it.
+To check or grant it manually: **System Settings → Privacy & Security →
+Microphone**.
 
-Каждая новая превью-сборка имеет новую ad-hoc подпись, поэтому **после
-обновления приложения macOS может сбросить разрешение на микрофон** — тогда
-его нужно выдать заново в том же разделе настроек.
+Each new preview build has a new ad-hoc signature, so **after updating the
+app macOS may reset the microphone permission** — in that case you need to
+grant it again in the same settings section.
 
-### Первый запуск
+### First launch
 
-При первом запуске Freesper скачивает модели распознавания речи — нужен
-интернет, загрузка может занять время.
+On first launch Freesper downloads speech recognition models — an internet
+connection is required, and the download may take a while.
 
-### Требования
+### Requirements
 
-- macOS 14.0 или новее
-- Mac на Apple Silicon (M1 и новее)
+- macOS 14.0 or newer
+- Apple Silicon Mac (M1 and newer)
