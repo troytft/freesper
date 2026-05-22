@@ -7,6 +7,7 @@ CONFIG := Debug
 DERIVED_DATA := $(PWD)/.build/derived
 APP_PATH := $(DERIVED_DATA)/Build/Products/$(CONFIG)/$(APP_NAME).app
 MODELS_DIR := $(HOME)/Library/Application Support/$(APP_NAME)/Models
+DIST_DIR := $(PWD)/dist
 
 .PHONY: install
 install:
@@ -32,11 +33,32 @@ build: prepare-xcodeproj
 
 .PHONY: stop
 stop:
-	@pkill -x $(APP_NAME) && echo "stopped" || echo "not running"
+	@if pkill -x $(APP_NAME); then \
+		while pgrep -x $(APP_NAME) >/dev/null; do sleep 0.1; done; \
+		echo "stopped"; \
+	else \
+		echo "not running"; \
+	fi
 
 .PHONY: dev
 dev: build stop
 	open "$(APP_PATH)"
+
+.PHONY: preview-build
+preview-build: prepare-xcodeproj
+	tuist xcodebuild build \
+		-workspace $(APP_NAME).xcworkspace \
+		-scheme $(APP_NAME) \
+		-configuration Release \
+		-derivedDataPath $(DERIVED_DATA) \
+		-destination 'platform=macOS,arch=arm64' \
+		ARCHS=arm64 \
+		CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+	rm -rf "$(DIST_DIR)" && mkdir -p "$(DIST_DIR)"
+	ditto -c -k --keepParent \
+		"$(DERIVED_DATA)/Build/Products/Release/$(APP_NAME).app" \
+		"$(DIST_DIR)/$(APP_NAME).zip"
+	@echo "ready: $(DIST_DIR)/$(APP_NAME).zip"
 
 .PHONY: logs
 logs:
@@ -66,4 +88,5 @@ clean:
 		Tuist/.build \
 		$(APP_NAME).xcworkspace \
 		$(APP_NAME).xcodeproj \
-		Derived
+		Derived \
+		$(DIST_DIR)
