@@ -66,6 +66,7 @@ let project = Project(
                     "CODE_SIGNING_REQUIRED": .string(codeSigningRequired),
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "PROVISIONING_PROFILE_SPECIFIER": "",
+                    "OTHER_LDFLAGS": ["$(inherited)", "-lc++"],
                 ]
             )
         ),
