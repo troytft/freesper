@@ -65,7 +65,9 @@
     }
 
     private struct AnimationInputs: Equatable {
+      // periphery:ignore - read via Equatable synthesis for `.task(id:)`
       var animate: Bool
+      // periphery:ignore - read via Equatable synthesis for `.task(id:)`
       var loudness: Loudness
     }
 

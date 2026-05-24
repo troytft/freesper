@@ -22,7 +22,6 @@ final class HotkeyMonitor {
   private var isPressed = false
 
   private var tap: CFMachPort?
-  private var source: CFRunLoopSource?
 
   init(log: Logger) {
     self.log = log
@@ -59,20 +58,8 @@ final class HotkeyMonitor {
     CGEvent.tapEnable(tap: port, enable: true)
 
     self.tap = port
-    self.source = runLoopSource
     log.info("[hotkey] tap installed")
     return true
-  }
-
-  func stop() {
-    if let tap {
-      CGEvent.tapEnable(tap: tap, enable: false)
-    }
-    if let source {
-      CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-    }
-    tap = nil
-    source = nil
   }
 
   /// Resets pressed-state so we don't leak a phantom "still pressed" between

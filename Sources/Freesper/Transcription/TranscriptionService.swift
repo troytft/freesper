@@ -30,13 +30,6 @@ actor TranscriptionService {
     return manager
   }
 
-  func transcribe(url: URL) async throws -> String {
-    let manager = try await ensureLoaded()
-    var state = try TdtDecoderState()
-    let result = try await manager.transcribe(url, decoderState: &state)
-    return result.text
-  }
-
   func transcribe(samples: [Float]) async throws -> String {
     let manager = try await ensureLoaded()
     var state = try TdtDecoderState()

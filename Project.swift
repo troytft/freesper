@@ -15,6 +15,7 @@ let project = Project(
     settings: .settings(
         base: [
             "SWIFT_VERSION": "6",
+            "SWIFT_TREAT_WARNINGS_AS_ERRORS": "YES",
             "MACOSX_DEPLOYMENT_TARGET": "14.0",
             "ENABLE_HARDENED_RUNTIME": "YES",
             "CODE_SIGN_STYLE": "Manual",
