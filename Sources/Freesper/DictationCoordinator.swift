@@ -14,6 +14,7 @@ final class DictationCoordinator {
   private let audio: AudioCaptureService
   private let overlay: OverlayController
   private let transcription: TranscriptionService
+  private let lastTranscriptStore: LastTranscriptStore
   private var phase: Phase = .idle
   private var transcribeTask: Task<Void, Never>?
 
@@ -22,12 +23,14 @@ final class DictationCoordinator {
     audio: AudioCaptureService,
     overlay: OverlayController,
     transcription: TranscriptionService,
+    lastTranscriptStore: LastTranscriptStore,
     log: Logger
   ) {
     self.readiness = readiness
     self.audio = audio
     self.overlay = overlay
     self.transcription = transcription
+    self.lastTranscriptStore = lastTranscriptStore
     self.log = log
     observeReadiness()
   }
@@ -89,6 +92,7 @@ final class DictationCoordinator {
         return
       }
       log.info("[transcribe] text=\(trimmed, privacy: .public)")
+      lastTranscriptStore.text = trimmed
 
       // Re-check Accessibility right before pasting — the user may have
       // toggled it during the recording. If it's still off, leave the

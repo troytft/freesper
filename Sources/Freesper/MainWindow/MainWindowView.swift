@@ -33,10 +33,6 @@ struct MainWindowView: View {
   @ViewBuilder
   private var detail: some View {
     switch coordinator.selectedSection {
-    case .home:
-      HomeView()
-    case .history:
-      HistoryView()
     case .settings:
       SettingsView(preferences: preferences, deviceCatalog: deviceCatalog)
     case .about:

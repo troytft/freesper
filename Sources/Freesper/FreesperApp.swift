@@ -8,9 +8,13 @@ struct FreesperApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      Button("Show Freesper") { graph.mainWindowCoordinator.open() }
-      Button("Settings…") { graph.mainWindowCoordinator.open(.settings) }
+      let lastTranscript = graph.lastTranscriptStore.text
+      Button("Copy last transcript") {
+        if let lastTranscript { PasteService.copyOnly(lastTranscript) }
+      }
+      .disabled(lastTranscript == nil)
       Divider()
+      Button("Settings…") { graph.mainWindowCoordinator.open(.settings) }
       Button("About") { graph.mainWindowCoordinator.open(.about) }
       Divider()
       Button("Quit") {
@@ -69,7 +73,7 @@ private struct MenuBarLabel: View {
         graph.mainWindowCoordinator.bind { openWindow(id: MainWindow.id) }
         appDelegate.onReopen = { [graph] in
           if graph.readiness.isReady {
-            graph.mainWindowCoordinator.open()
+            graph.mainWindowCoordinator.open(.settings)
           } else {
             graph.setupCoordinator.openFromMenu()
           }

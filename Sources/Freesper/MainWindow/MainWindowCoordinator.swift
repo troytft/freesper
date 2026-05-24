@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class MainWindowCoordinator {
-  var selectedSection: MainSection = .home
+  var selectedSection: MainSection = .settings
 
   @ObservationIgnored
   private let activationPolicy: ActivationPolicyController
