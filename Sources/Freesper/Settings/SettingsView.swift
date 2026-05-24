@@ -24,12 +24,6 @@ struct SettingsView: View {
           }
         }
         .pickerStyle(.menu)
-
-        Picker("Mode", selection: $preferences.hotkeyMode) {
-          Text("Hold").tag(HotkeyMode.hold)
-          Text("Toggle").tag(HotkeyMode.toggle)
-        }
-        .pickerStyle(.segmented)
       }
     }
     .formStyle(.grouped)

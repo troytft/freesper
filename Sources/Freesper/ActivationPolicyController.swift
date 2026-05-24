@@ -4,7 +4,7 @@ import AppKit
 final class ActivationPolicyController {
   enum Reason: Hashable {
     case userPreference
-    case setup
+    case onboarding
     case mainWindow
   }
 

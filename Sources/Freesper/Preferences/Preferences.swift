@@ -23,18 +23,17 @@ final class Preferences {
     }
   }
 
-  /// Independent from `hotkeyPreset` — same binding can be hold or toggle.
-  var hotkeyMode: HotkeyMode {
-    didSet {
-      guard oldValue != hotkeyMode else { return }
-      defaults.set(hotkeyMode.rawValue, forKey: Keys.hotkeyMode)
-    }
-  }
-
   var showDockIcon: Bool {
     didSet {
       guard oldValue != showDockIcon else { return }
       defaults.set(showDockIcon, forKey: Keys.showDockIcon)
+    }
+  }
+
+  var hasCompletedOnboarding: Bool {
+    didSet {
+      guard oldValue != hasCompletedOnboarding else { return }
+      defaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding)
     }
   }
 
@@ -44,17 +43,16 @@ final class Preferences {
     self.hotkeyPreset =
       defaults.string(forKey: Keys.hotkeyPreset)
       .flatMap(HotkeyPreset.init(rawValue:)) ?? .default
-    self.hotkeyMode =
-      defaults.string(forKey: Keys.hotkeyMode)
-      .flatMap(HotkeyMode.init(rawValue:)) ?? .hold
     self.showDockIcon =
       (defaults.object(forKey: Keys.showDockIcon) as? Bool) ?? true
+    self.hasCompletedOnboarding =
+      (defaults.object(forKey: Keys.hasCompletedOnboarding) as? Bool) ?? false
   }
 
   private enum Keys {
     static let microphoneUID = "preferences.microphoneUID"
     static let hotkeyPreset = "preferences.hotkeyPreset"
-    static let hotkeyMode = "preferences.hotkeyMode"
     static let showDockIcon = "preferences.showDockIcon"
+    static let hasCompletedOnboarding = "preferences.hasCompletedOnboarding"
   }
 }

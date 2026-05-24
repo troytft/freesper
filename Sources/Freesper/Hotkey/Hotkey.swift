@@ -1,10 +1,5 @@
 import CoreGraphics
 
-enum HotkeyMode: String, Codable, Sendable, CaseIterable {
-  case hold
-  case toggle
-}
-
 struct Hotkey: Equatable, @unchecked Sendable {
   /// `nil` means "bare modifier hotkey" — match a flagsChanged transition.
   let keyCode: CGKeyCode?

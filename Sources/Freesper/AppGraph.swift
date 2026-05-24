@@ -18,7 +18,7 @@ final class AppGraph {
   let lastTranscriptStore: LastTranscriptStore
   let dictation: DictationCoordinator
   let hotkey: HotkeyController
-  let setupCoordinator: SetupCoordinator
+  let onboardingCoordinator: OnboardingCoordinator
   let mainWindowCoordinator: MainWindowCoordinator
 
   private var hasStarted = false
@@ -55,8 +55,9 @@ final class AppGraph {
       readiness: readiness,
       log: log
     )
-    let setupCoordinator = SetupCoordinator(
+    let onboardingCoordinator = OnboardingCoordinator(
       readiness: readiness,
+      preferences: preferences,
       overlay: overlay,
       activationPolicy: activationPolicy
     )
@@ -73,7 +74,7 @@ final class AppGraph {
     self.lastTranscriptStore = lastTranscriptStore
     self.dictation = dictation
     self.hotkey = hotkey
-    self.setupCoordinator = setupCoordinator
+    self.onboardingCoordinator = onboardingCoordinator
     self.mainWindowCoordinator = mainWindowCoordinator
   }
 
@@ -100,10 +101,8 @@ final class AppGraph {
       }
     }
 
-    Task { @MainActor in
-      await bootstrap()
-      setupCoordinator.start()
-    }
+    bootstrap()
+    onboardingCoordinator.start()
   }
 
   private func observePreferences() {
@@ -123,17 +122,8 @@ final class AppGraph {
     }
   }
 
-  /// Order matters for the hotkey: `AXIsProcessTrustedWithOptions` (called
-  /// from `AccessibilityPermission.ensure`) is what registers our PID with
-  /// the OS's TCC subsystem. Until it runs, `CGEvent.tapCreate` returns nil
-  /// even when the user is already in the trusted list — so permissions must
-  /// resolve *before* the controller installs its tap.
-  private func bootstrap() async {
-    readiness.mic = await MicrophonePermission.request()
-    // First-run side effect: registers the app in the Accessibility list
-    // so the user has a checkbox to toggle. The non-modal system popup it
-    // shows is fine — our menu has the deeplink for the long term.
-    AccessibilityPermission.ensure(prompt: true, log: log)
+  private func bootstrap() {
+    readiness.mic = MicrophonePermission.check()
     readiness.accessibility = AccessibilityPermission.check(log: log)
     hotkey.register()
     modelManager.verifyOnLaunch()
