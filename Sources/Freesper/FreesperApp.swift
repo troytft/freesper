@@ -8,19 +8,7 @@ struct FreesperApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      let lastTranscript = graph.lastTranscriptStore.text
-      Button("Copy last transcript") {
-        if let lastTranscript { PasteService.copyOnly(lastTranscript) }
-      }
-      .disabled(lastTranscript == nil)
-      Divider()
-      Button("Settings…") { graph.mainWindowCoordinator.open(.settings) }
-      Button("About") { graph.mainWindowCoordinator.open(.about) }
-      Divider()
-      Button("Quit") {
-        NSApplication.shared.terminate(nil)
-      }
-      .keyboardShortcut("q")
+      MenuBarMenu(graph: graph)
     } label: {
       MenuBarLabel(graph: graph, appDelegate: appDelegate)
     }
@@ -43,15 +31,40 @@ struct FreesperApp: App {
       }
     }
 
-    Window("Setup", id: SetupWindow.id) {
-      SetupView(
+    Window("Welcome to Freesper", id: OnboardingWindow.id) {
+      OnboardingView(
+        coordinator: graph.onboardingCoordinator,
         readiness: graph.readiness,
+        preferences: graph.preferences,
         modelManager: graph.modelManager,
-        coordinator: graph.setupCoordinator,
-        activationPolicy: graph.activationPolicy
+        lastTranscriptStore: graph.lastTranscriptStore,
+        activationPolicy: graph.activationPolicy,
+        log: graph.log
       )
     }
     .windowResizability(.contentSize)
+  }
+}
+
+private struct MenuBarMenu: View {
+  let graph: AppGraph
+
+  var body: some View {
+    if graph.preferences.hasCompletedOnboarding {
+      let lastTranscript = graph.lastTranscriptStore.text
+      Button("Copy last transcript") {
+        if let lastTranscript { PasteService.copyOnly(lastTranscript) }
+      }
+      .disabled(lastTranscript == nil)
+      Divider()
+      Button("Settings…") { graph.mainWindowCoordinator.open(.settings) }
+    } else {
+      Button("Continue Setup…") { graph.onboardingCoordinator.openFromMenu() }
+    }
+    Button("About") { graph.mainWindowCoordinator.open(.about) }
+    Divider()
+    Button("Quit") { NSApplication.shared.terminate(nil) }
+      .keyboardShortcut("q")
   }
 }
 
@@ -68,14 +81,14 @@ private struct MenuBarLabel: View {
   var body: some View {
     Image("MenuBarIcon")
       .onAppear {
-        graph.setupCoordinator.openWindow = { openWindow(id: SetupWindow.id) }
-        graph.setupCoordinator.dismissWindow = { dismissWindow(id: SetupWindow.id) }
+        graph.onboardingCoordinator.openWindow = { openWindow(id: OnboardingWindow.id) }
+        graph.onboardingCoordinator.dismissWindow = { dismissWindow(id: OnboardingWindow.id) }
         graph.mainWindowCoordinator.bind { openWindow(id: MainWindow.id) }
-        appDelegate.onReopen = { [graph] in
-          if graph.readiness.isReady {
+        appDelegate.onReopen = {
+          if graph.preferences.hasCompletedOnboarding && graph.readiness.isReady {
             graph.mainWindowCoordinator.open(.settings)
           } else {
-            graph.setupCoordinator.openFromMenu()
+            graph.onboardingCoordinator.openFromMenu()
           }
         }
         graph.runOnce()

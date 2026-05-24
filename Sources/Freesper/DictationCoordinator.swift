@@ -92,7 +92,7 @@ final class DictationCoordinator {
         return
       }
       log.info("[transcribe] text=\(trimmed, privacy: .public)")
-      lastTranscriptStore.text = trimmed
+      lastTranscriptStore.record(trimmed)
 
       // Re-check Accessibility right before pasting — the user may have
       // toggled it during the recording. If it's still off, leave the

@@ -4,7 +4,7 @@ import AppKit
 final class ActivationPolicyController {
   enum Reason: Hashable {
     case userPreference
-    case setup
+    case onboarding
     case mainWindow
   }
 
@@ -27,8 +27,8 @@ final class ActivationPolicyController {
     if NSApp.activationPolicy() != .regular {
       NSApp.setActivationPolicy(.regular)
     }
-    if reason != .userPreference, !NSApp.isActive {
-      NSRunningApplication.current.activate(options: .activateAllWindows)
+    if reason != .userPreference {
+      NSApp.activate()
     }
   }
 
@@ -40,9 +40,7 @@ final class ActivationPolicyController {
     if NSApp.activationPolicy() != .regular {
       NSApp.setActivationPolicy(.regular)
     }
-    if !NSApp.isActive {
-      NSRunningApplication.current.activate(options: .activateAllWindows)
-    }
+    NSApp.activate()
   }
 
   // Demoting from SwiftUI's `onDisappear` flickers the menu bar — the

@@ -72,14 +72,25 @@ fmt:
 lint:
 	swift-format lint --strict -r Sources
 
-.PHONY: remove-model
-remove-model: stop
+.PHONY: reset
+reset: stop
 	@if [ -d "$(MODELS_DIR)" ]; then \
 		rm -rf "$(MODELS_DIR)"; \
 		echo "removed $(MODELS_DIR)"; \
 	else \
 		echo "no model directory at $(MODELS_DIR)"; \
 	fi
+	@if defaults delete $(BUNDLE_ID) 2>/dev/null; then \
+		echo "cleared preferences"; \
+	else \
+		echo "no preferences to clear"; \
+	fi
+	@tccutil reset Microphone $(BUNDLE_ID) >/dev/null 2>&1 \
+		&& echo "reset microphone permission" \
+		|| echo "no microphone permission to reset"
+	@tccutil reset Accessibility $(BUNDLE_ID) >/dev/null 2>&1 \
+		&& echo "reset accessibility permission" \
+		|| echo "no accessibility permission to reset"
 
 .PHONY: clean
 clean:
