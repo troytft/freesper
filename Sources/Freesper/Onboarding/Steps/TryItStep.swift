@@ -4,8 +4,10 @@ struct TryItStep: View {
   let preferences: Preferences
   let lastTranscriptStore: LastTranscriptStore
 
-  @State private var draft: String = ""
-  @State private var baseline: String?
+  // TextEditor needs a binding; nothing reads this value — the field
+  // exists only to receive the simulated paste from PasteService.
+  @State private var sandboxText: String = ""
+  @State private var baselineVersion: Int = 0
   @State private var didDictate: Bool = false
   @FocusState private var isFocused: Bool
 
@@ -17,7 +19,7 @@ struct TryItStep: View {
         "Press and hold \(preferences.hotkeyPreset.label) and say something. Your words will appear in the field below."
     ) {
       VStack(spacing: 10) {
-        TextEditor(text: $draft)
+        TextEditor(text: $sandboxText)
           .font(.body)
           .focused($isFocused)
           .frame(minHeight: 120, maxHeight: 160)
@@ -35,12 +37,13 @@ struct TryItStep: View {
       }
     }
     .onAppear {
-      baseline = lastTranscriptStore.text
+      baselineVersion = lastTranscriptStore.version
       isFocused = true
     }
-    .onChange(of: lastTranscriptStore.text) { _, newValue in
-      guard let newValue, newValue != baseline else { return }
-      didDictate = true
+    .onChange(of: lastTranscriptStore.version) { _, newVersion in
+      if newVersion > baselineVersion {
+        didDictate = true
+      }
     }
   }
 }

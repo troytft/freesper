@@ -58,17 +58,13 @@ private struct MenuBarMenu: View {
       .disabled(lastTranscript == nil)
       Divider()
       Button("Settings…") { graph.mainWindowCoordinator.open(.settings) }
-      Button("About") { graph.mainWindowCoordinator.open(.about) }
-      Divider()
-      Button("Quit") { NSApplication.shared.terminate(nil) }
-        .keyboardShortcut("q")
     } else {
       Button("Continue Setup…") { graph.onboardingCoordinator.openFromMenu() }
-      Button("About") { graph.mainWindowCoordinator.open(.about) }
-      Divider()
-      Button("Quit") { NSApplication.shared.terminate(nil) }
-        .keyboardShortcut("q")
     }
+    Button("About") { graph.mainWindowCoordinator.open(.about) }
+    Divider()
+    Button("Quit") { NSApplication.shared.terminate(nil) }
+      .keyboardShortcut("q")
   }
 }
 
@@ -88,7 +84,7 @@ private struct MenuBarLabel: View {
         graph.onboardingCoordinator.openWindow = { openWindow(id: OnboardingWindow.id) }
         graph.onboardingCoordinator.dismissWindow = { dismissWindow(id: OnboardingWindow.id) }
         graph.mainWindowCoordinator.bind { openWindow(id: MainWindow.id) }
-        appDelegate.onReopen = { [graph] in
+        appDelegate.onReopen = {
           if graph.preferences.hasCompletedOnboarding && graph.readiness.isReady {
             graph.mainWindowCoordinator.open(.settings)
           } else {

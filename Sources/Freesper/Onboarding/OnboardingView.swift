@@ -10,6 +10,8 @@ struct OnboardingView: View {
   let activationPolicy: ActivationPolicyController
   let log: Logger
 
+  private static let contentSize = CGSize(width: 580, height: 520)
+
   var body: some View {
     VStack(spacing: 0) {
       stepContent
@@ -22,7 +24,7 @@ struct OnboardingView: View {
         .padding(.horizontal, 24)
         .padding(.bottom, 16)
     }
-    .frame(width: 580, height: 520)
+    .frame(width: Self.contentSize.width, height: Self.contentSize.height)
     .onAppear {
       activationPolicy.acquire(.onboarding)
       coordinator.windowDidAppear()
@@ -76,10 +78,12 @@ private struct ProgressStrip: View {
   let current: OnboardingStep
 
   var body: some View {
+    let order = OnboardingStep.allCases
+    let currentIndex = order.firstIndex(of: current) ?? 0
     HStack(spacing: 8) {
-      ForEach(OnboardingStep.allCases, id: \.self) { step in
+      ForEach(Array(order.enumerated()), id: \.element) { index, _ in
         Circle()
-          .fill(step.rawValue <= current.rawValue ? Color.accentColor : Color.secondary.opacity(0.3))
+          .fill(index <= currentIndex ? Color.accentColor : Color.secondary.opacity(0.3))
           .frame(width: 6, height: 6)
       }
     }

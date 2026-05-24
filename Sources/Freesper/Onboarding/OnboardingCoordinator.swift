@@ -6,19 +6,13 @@ final class OnboardingCoordinator {
   var currentStep: OnboardingStep = .welcome
   var isWindowVisible: Bool = false
 
-  @ObservationIgnored
-  private let readiness: AppReadiness
-  @ObservationIgnored
-  private let preferences: Preferences
-  @ObservationIgnored
-  private let overlay: OverlayController
-  @ObservationIgnored
-  private let activationPolicy: ActivationPolicyController
+  @ObservationIgnored private let readiness: AppReadiness
+  @ObservationIgnored private let preferences: Preferences
+  @ObservationIgnored private let overlay: OverlayController
+  @ObservationIgnored private let activationPolicy: ActivationPolicyController
 
-  @ObservationIgnored
-  var openWindow: (() -> Void)?
-  @ObservationIgnored
-  var dismissWindow: (() -> Void)?
+  @ObservationIgnored var openWindow: (() -> Void)?
+  @ObservationIgnored var dismissWindow: (() -> Void)?
 
   init(
     readiness: AppReadiness,
@@ -34,30 +28,22 @@ final class OnboardingCoordinator {
 
   func start() {
     syncOverlay()
-    applyInitialDecision()
+    if !preferences.hasCompletedOnboarding || !readiness.isReady {
+      present(desiredStep())
+    }
     observeReadiness()
   }
 
   func openFromMenu() {
-    currentStep = stepForOpen()
-    activationPolicy.activate()
-    openWindow?()
+    present(desiredStep())
   }
 
   func continueFromCurrentStep() {
-    let order = OnboardingStep.allCases
-    guard let index = order.firstIndex(of: currentStep), index < order.count - 1 else {
-      return
-    }
-    currentStep = order[index + 1]
+    move(by: 1)
   }
 
   func back() {
-    let order = OnboardingStep.allCases
-    guard let index = order.firstIndex(of: currentStep), index > 0 else {
-      return
-    }
-    currentStep = order[index - 1]
+    move(by: -1)
   }
 
   func finish() {
@@ -73,20 +59,6 @@ final class OnboardingCoordinator {
     isWindowVisible = false
   }
 
-  private func applyInitialDecision() {
-    if !preferences.hasCompletedOnboarding {
-      currentStep = .welcome
-      activationPolicy.activate()
-      openWindow?()
-      return
-    }
-    if !readiness.isReady {
-      currentStep = firstNotSatisfied() ?? .welcome
-      activationPolicy.activate()
-      openWindow?()
-    }
-  }
-
   private func observeReadiness() {
     observe { [weak self] in
       _ = self?.readiness.isReady
@@ -95,15 +67,16 @@ final class OnboardingCoordinator {
     }
   }
 
+  // After the user finishes onboarding, dropped permissions are surfaced
+  // elsewhere (overlay/beep on hotkey) — we don't auto-reopen this window,
+  // which would feel like a haunting.
   private func handleReadinessChange() {
     syncOverlay()
     guard !readiness.isReady else { return }
     if isWindowVisible {
       snapBackIfNeeded()
-    } else {
-      currentStep = firstNotSatisfied() ?? .welcome
-      activationPolicy.activate()
-      openWindow?()
+    } else if !preferences.hasCompletedOnboarding {
+      present(desiredStep())
     }
   }
 
@@ -118,7 +91,7 @@ final class OnboardingCoordinator {
     currentStep = firstBroken
   }
 
-  private func stepForOpen() -> OnboardingStep {
+  private func desiredStep() -> OnboardingStep {
     if !preferences.hasCompletedOnboarding {
       return .welcome
     }
@@ -127,6 +100,20 @@ final class OnboardingCoordinator {
 
   private func firstNotSatisfied() -> OnboardingStep? {
     OnboardingStep.allCases.first { !$0.isSatisfied(readiness) }
+  }
+
+  private func move(by delta: Int) {
+    let order = OnboardingStep.allCases
+    guard let index = order.firstIndex(of: currentStep) else { return }
+    let next = index + delta
+    guard order.indices.contains(next) else { return }
+    currentStep = order[next]
+  }
+
+  private func present(_ step: OnboardingStep) {
+    currentStep = step
+    activationPolicy.activate()
+    openWindow?()
   }
 
   private func syncOverlay() {

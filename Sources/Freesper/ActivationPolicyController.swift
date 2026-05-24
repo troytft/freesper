@@ -28,7 +28,7 @@ final class ActivationPolicyController {
       NSApp.setActivationPolicy(.regular)
     }
     if reason != .userPreference {
-      NSApp.activate(ignoringOtherApps: true)
+      NSApp.activate()
     }
   }
 
@@ -40,7 +40,7 @@ final class ActivationPolicyController {
     if NSApp.activationPolicy() != .regular {
       NSApp.setActivationPolicy(.regular)
     }
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
   }
 
   // Demoting from SwiftUI's `onDisappear` flickers the menu bar — the

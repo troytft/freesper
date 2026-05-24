@@ -6,10 +6,14 @@ struct OnboardingStepChrome<Icon: View, Content: View>: View {
   let description: String
   @ViewBuilder var content: () -> Content
 
+  private static var topInset: CGFloat { 128 }
+  private static var horizontalInset: CGFloat { 24 }
+  private static var iconHeight: CGFloat { 72 }
+
   var body: some View {
     VStack(spacing: 20) {
       icon()
-        .frame(height: 72)
+        .frame(height: Self.iconHeight)
 
       VStack(spacing: 8) {
         Text(title)
@@ -21,15 +25,15 @@ struct OnboardingStepChrome<Icon: View, Content: View>: View {
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
       }
-      .padding(.horizontal, 24)
+      .padding(.horizontal, Self.horizontalInset)
 
       content()
 
       Spacer(minLength: 0)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    .padding(.top, 128)
-    .padding(.horizontal, 24)
+    .padding(.top, Self.topInset)
+    .padding(.horizontal, Self.horizontalInset)
   }
 }
 

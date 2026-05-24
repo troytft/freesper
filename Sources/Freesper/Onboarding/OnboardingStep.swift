@@ -6,6 +6,9 @@ enum OnboardingStep: Int, CaseIterable {
   case hotkey
   case tryIt
 
+  /// "Satisfied" means the step poses no blocking condition for advancing.
+  /// Informational steps (welcome, hotkey, tryIt) are always satisfied;
+  /// permission/model steps gate on actual readiness.
   @MainActor
   func isSatisfied(_ readiness: AppReadiness) -> Bool {
     switch self {
