@@ -18,11 +18,12 @@ struct OverlayView: View {
     case .transcribing: OverlayMetrics.transcribingCapsuleSize
     }
   }
+  private var fillOpacity: Double { isExpanded ? 0.95 : 0.5 }
 
   var body: some View {
     ZStack {
       Capsule(style: .continuous)
-        .fill(Color.black.opacity(0.7))
+        .fill(Color.black.opacity(fillOpacity))
         .frame(width: capsuleSize.width, height: capsuleSize.height)
 
       contentRow
