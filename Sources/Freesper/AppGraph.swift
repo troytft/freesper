@@ -13,9 +13,12 @@ final class AppGraph {
   let activationPolicy: ActivationPolicyController
   let modelManager: ModelManager
   let audio: AudioCaptureService
+  // periphery:ignore - owned by the composition root, used transitively via `dictation`
   let transcription: TranscriptionService
+  // periphery:ignore - owned by the composition root, used transitively via `dictation`/`onboardingCoordinator`
   let overlay: OverlayController
   let lastTranscriptStore: LastTranscriptStore
+  // periphery:ignore - owned by the composition root, used transitively via `hotkey`
   let dictation: DictationCoordinator
   let hotkey: HotkeyController
   let onboardingCoordinator: OnboardingCoordinator

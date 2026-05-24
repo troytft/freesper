@@ -14,12 +14,17 @@ jobs:
         with:
           xcode-version: "26.4.1"
       - uses: jdx/mise-action@v4
+
       - run: make lint
-      - run: make build
+
+      - run: make build-debug
         env:
           TUIST_CODE_SIGNING_ALLOWED: "NO"
           TUIST_CODE_SIGNING_REQUIRED: "NO"
           TUIST_CODE_SIGN_IDENTITY: ""
+
+      - run: make dead-code
+
       - name: Upload build logs
         if: failure()
         uses: actions/upload-artifact@v7

@@ -72,11 +72,6 @@ final class ModelManager {
     startDownload()
   }
 
-  func cancel() {
-    task?.cancel()
-    task = nil
-  }
-
   private func startDownload() {
     if task != nil { return }
     guard let directory = modelDirectory else {
