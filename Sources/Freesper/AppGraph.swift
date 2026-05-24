@@ -15,6 +15,7 @@ final class AppGraph {
   let audio: AudioCaptureService
   let transcription: TranscriptionService
   let overlay: OverlayController
+  let lastTranscriptStore: LastTranscriptStore
   let dictation: DictationCoordinator
   let hotkey: HotkeyController
   let setupCoordinator: SetupCoordinator
@@ -39,11 +40,13 @@ final class AppGraph {
       log: log
     )
     let overlay = OverlayController(audio: audio, preferences: preferences, log: log)
+    let lastTranscriptStore = LastTranscriptStore()
     let dictation = DictationCoordinator(
       readiness: readiness,
       audio: audio,
       overlay: overlay,
       transcription: transcription,
+      lastTranscriptStore: lastTranscriptStore,
       log: log
     )
     let hotkey = HotkeyController(
@@ -67,6 +70,7 @@ final class AppGraph {
     self.audio = audio
     self.transcription = transcription
     self.overlay = overlay
+    self.lastTranscriptStore = lastTranscriptStore
     self.dictation = dictation
     self.hotkey = hotkey
     self.setupCoordinator = setupCoordinator

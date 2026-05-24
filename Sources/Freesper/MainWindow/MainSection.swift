@@ -1,6 +1,4 @@
 enum MainSection: Hashable, CaseIterable, Identifiable {
-  case home
-  case history
   case settings
   case about
   #if DEBUG
@@ -11,8 +9,6 @@ enum MainSection: Hashable, CaseIterable, Identifiable {
 
   var label: String {
     switch self {
-    case .home: "Home"
-    case .history: "History"
     case .settings: "Settings"
     case .about: "About"
     #if DEBUG
@@ -23,8 +19,6 @@ enum MainSection: Hashable, CaseIterable, Identifiable {
 
   var systemImage: String {
     switch self {
-    case .home: "house"
-    case .history: "clock"
     case .settings: "gearshape"
     case .about: "info.circle"
     #if DEBUG
