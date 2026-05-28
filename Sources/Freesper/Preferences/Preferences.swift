@@ -30,6 +30,13 @@ final class Preferences {
     }
   }
 
+  var showOverlay: Bool {
+    didSet {
+      guard oldValue != showOverlay else { return }
+      defaults.set(showOverlay, forKey: Keys.showOverlay)
+    }
+  }
+
   var hasCompletedOnboarding: Bool {
     didSet {
       guard oldValue != hasCompletedOnboarding else { return }
@@ -45,6 +52,8 @@ final class Preferences {
       .flatMap(HotkeyPreset.init(rawValue:)) ?? .default
     self.showDockIcon =
       (defaults.object(forKey: Keys.showDockIcon) as? Bool) ?? true
+    self.showOverlay =
+      (defaults.object(forKey: Keys.showOverlay) as? Bool) ?? true
     self.hasCompletedOnboarding =
       (defaults.object(forKey: Keys.hasCompletedOnboarding) as? Bool) ?? false
   }
@@ -53,6 +62,7 @@ final class Preferences {
     static let microphoneUID = "preferences.microphoneUID"
     static let hotkeyPreset = "preferences.hotkeyPreset"
     static let showDockIcon = "preferences.showDockIcon"
+    static let showOverlay = "preferences.showOverlay"
     static let hasCompletedOnboarding = "preferences.hasCompletedOnboarding"
   }
 }
