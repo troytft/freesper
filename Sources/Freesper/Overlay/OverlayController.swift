@@ -6,7 +6,8 @@ import SwiftUI
 /// resizing, and the timers that drive the live waveform.
 ///
 /// Lifecycle:
-///   1. `start()`           — at app launch: pill becomes always-visible (idle).
+///   1. `start()`           — at app launch: pill becomes visible (idle), unless
+///                            the overlay is turned off in preferences.
 ///   2. hover               — controller flips idle ↔ hint and resizes the panel.
 ///   3. `setListening()`    — keyDown: panel expands, level polling starts.
 ///   4. `setTranscribing()` — keyUp: levels stop, a progress spinner shows.
@@ -20,6 +21,7 @@ final class OverlayController {
   private var panel: OverlayPanel?
   private var pollTask: Task<Void, Never>?
   private var normalizer = WaveformNormalizer()
+  private var isRunning = false
 
   /// The panel is a fixed-size canvas hosting the SwiftUI overlay. Phase
   /// changes resize the *visible capsule* inside SwiftUI; the NSPanel and
@@ -35,32 +37,22 @@ final class OverlayController {
     self.preferences = preferences
     self.log = log
     observeHotkey()
+    observeShowOverlay()
   }
 
   func start() {
-    ensurePanel()
-    guard let panel else { return }
-    applyHotkeyLabel()
-    model.phase = .idle
-    place(panel)
-    panel.orderFrontRegardless()
-    log.info("Overlay started in idle phase")
+    isRunning = true
+    syncPanel()
   }
 
   func stop() {
-    stopLevelPolling()
-    panel?.orderOut(nil)
-    panel = nil
-    model.phase = .idle
-    model.barIntensities = []
-    log.info("Overlay stopped")
+    isRunning = false
+    syncPanel()
   }
 
   func setListening() {
     model.phase = .listening
-    normalizer.reset()
-    refreshWaveform()
-    startLevelPolling()
+    syncWaveform()
   }
 
   func setTranscribing() {
@@ -74,6 +66,45 @@ final class OverlayController {
     model.barIntensities = []
   }
 
+  private var shouldShowOverlay: Bool {
+    isRunning && preferences.showOverlay
+  }
+
+  private func syncPanel() {
+    if shouldShowOverlay {
+      showPanel()
+    } else {
+      teardownPanel()
+    }
+  }
+
+  private func showPanel() {
+    ensurePanel()
+    guard let panel else { return }
+    applyHotkeyLabel()
+    place(panel)
+    panel.orderFrontRegardless()
+    syncWaveform()
+    log.info("Overlay shown")
+  }
+
+  private func teardownPanel() {
+    stopLevelPolling()
+    panel?.orderOut(nil)
+    panel = nil
+    log.info("Overlay hidden")
+  }
+
+  private func syncWaveform() {
+    guard shouldShowOverlay, model.phase == .listening else {
+      stopLevelPolling()
+      return
+    }
+    normalizer.reset()
+    refreshWaveform()
+    startLevelPolling()
+  }
+
   private func applyHotkeyLabel() {
     model.hotkeyLabel = preferences.hotkeyPreset.label
   }
@@ -83,6 +114,14 @@ final class OverlayController {
       _ = self?.preferences.hotkeyPreset
     } onChange: { [weak self] in
       self?.applyHotkeyLabel()
+    }
+  }
+
+  private func observeShowOverlay() {
+    observe { [weak self] in
+      _ = self?.preferences.showOverlay
+    } onChange: { [weak self] in
+      self?.syncPanel()
     }
   }
 

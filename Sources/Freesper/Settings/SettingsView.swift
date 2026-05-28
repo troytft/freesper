@@ -8,6 +8,7 @@ struct SettingsView: View {
     Form {
       Section("General") {
         Toggle("Show in Dock", isOn: $preferences.showDockIcon)
+        Toggle("Show overlay", isOn: $preferences.showOverlay)
       }
 
       Section("Microphone") {
