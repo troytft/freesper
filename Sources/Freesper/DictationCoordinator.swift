@@ -93,18 +93,7 @@ final class DictationCoordinator {
       }
       log.info("[transcribe] text=\(trimmed, privacy: .public)")
       lastTranscriptStore.record(trimmed)
-
-      // Re-check Accessibility right before pasting — the user may have
-      // toggled it during the recording. If it's still off, leave the
-      // transcript in the clipboard and tell them how to recover.
-      readiness.refreshPermissions()
-      if readiness.accessibility == .granted {
-        await PasteService.paste(trimmed, log: log)
-      } else {
-        log.info("[transcribe] accessibility missing, copy-only fallback")
-        PasteService.copyOnly(trimmed)
-        PermissionAlerts.accessibilityAfterTranscript()
-      }
+      await PasteService.paste(trimmed + " ", log: log)
     } catch {
       log.error("[transcribe] failed: \(error.localizedDescription, privacy: .public)")
     }
