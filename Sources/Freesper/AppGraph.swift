@@ -6,7 +6,7 @@ import OSLog
 /// invoked from the SwiftUI view tree once the environment is available.
 @MainActor
 final class AppGraph {
-  let log = Logger(subsystem: "com.freesper.app", category: "app")
+  let log = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "app")
   let readiness: AppReadiness
   let preferences: Preferences
   let deviceCatalog: AudioDeviceCatalog
@@ -23,6 +23,7 @@ final class AppGraph {
   let hotkey: HotkeyController
   let onboardingCoordinator: OnboardingCoordinator
   let mainWindowCoordinator: MainWindowCoordinator
+  let updater: UpdaterController
 
   private var hasStarted = false
 
@@ -65,6 +66,7 @@ final class AppGraph {
       activationPolicy: activationPolicy
     )
     let mainWindowCoordinator = MainWindowCoordinator(activationPolicy: activationPolicy)
+    let updater = UpdaterController(activationPolicy: activationPolicy)
 
     self.readiness = readiness
     self.preferences = preferences
@@ -79,6 +81,7 @@ final class AppGraph {
     self.hotkey = hotkey
     self.onboardingCoordinator = onboardingCoordinator
     self.mainWindowCoordinator = mainWindowCoordinator
+    self.updater = updater
   }
 
   /// Idempotent — SwiftUI may call onAppear more than once per scene flip.

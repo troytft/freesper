@@ -1,5 +1,6 @@
 import ProjectDescription
 
+let version = Environment.version.getString(default: "0.0.0")
 let developmentTeam = Environment.developmentTeam.getString(default: "")
 let codeSignIdentity = Environment.codeSignIdentity.getString(default: "Apple Development")
 let codeSigningAllowed = Environment.codeSigningAllowed.getString(default: "YES")
@@ -38,17 +39,19 @@ let project = Project(
             name: "Freesper",
             destinations: [.mac],
             product: .app,
-            bundleId: "com.freesper.app",
+            bundleId: "me.troytft.freesper",
             deploymentTargets: .macOS("14.0"),
             infoPlist: .extendingDefault(with: [
                 "CFBundleName": "Freesper",
-                "CFBundleDisplayName": "Freesper",
-                "CFBundleShortVersionString": "0.1.0",
-                "CFBundleVersion": "1",
+                "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+                "CFBundleShortVersionString": .string(version),
+                "CFBundleVersion": .string(version),
                 "CFBundleIconName": "AppIcon",
                 "LSMinimumSystemVersion": "14.0",
                 "LSUIElement": true,
                 "NSMicrophoneUsageDescription": "Freesper uses the microphone to capture speech and convert it to text.",
+                "SUFeedURL": "$(SPARKLE_FEED_URL)",
+                "SUPublicEDKey": "5nJWhGe7diYZtxoGYGYlfc0DrFINJGfmWK/tC3Wq4ys=",
             ]),
             sources: ["Sources/Freesper/**"],
             resources: ["AppIcon.icon", "Assets.xcassets"],
@@ -58,6 +61,7 @@ let project = Project(
             ]),
             dependencies: [
                 .external(name: "FluidAudio"),
+                .external(name: "Sparkle"),
             ],
             settings: .settings(
                 base: [
@@ -68,6 +72,25 @@ let project = Project(
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "PROVISIONING_PROFILE_SPECIFIER": "",
                     "OTHER_LDFLAGS": ["$(inherited)", "-lc++"],
+                ],
+                configurations: [
+                    .debug(
+                        name: "Debug",
+                        settings: [
+                            "PRODUCT_BUNDLE_IDENTIFIER": "me.troytft.freesper.dev",
+                            "APP_DISPLAY_NAME": "Freesper Dev",
+                            "SPARKLE_FEED_URL": "",
+                        ]
+                    ),
+                    .release(
+                        name: "Release",
+                        settings: [
+                            "PRODUCT_BUNDLE_IDENTIFIER": "me.troytft.freesper",
+                            "APP_DISPLAY_NAME": "Freesper",
+                            "SPARKLE_FEED_URL":
+                                "https://github.com/troytft/freesper/releases/latest/download/appcast.xml",
+                        ]
+                    ),
                 ]
             )
         ),

@@ -2,7 +2,7 @@
 export
 
 APP_NAME := Freesper
-BUNDLE_ID := com.freesper.app
+BUNDLE_ID := me.troytft.freesper.dev
 DERIVED_DATA := $(PWD)/.build/derived
 MODELS_DIR := $(HOME)/Library/Application Support/$(APP_NAME)/Models
 DIST_DIR := $(PWD)/dist
@@ -12,6 +12,17 @@ XCODEBUILD = tuist xcodebuild build \
 	-scheme $(APP_NAME) \
 	-derivedDataPath $(DERIVED_DATA) \
 	-destination 'platform=macOS,arch=arm64'
+
+RELEASE_DIR := $(PWD)/.build/release
+ARCHIVE_PATH := $(RELEASE_DIR)/$(APP_NAME).xcarchive
+EXPORT_DIR := $(RELEASE_DIR)/export
+EXPORT_OPTIONS := $(RELEASE_DIR)/ExportOptions.plist
+APP_PATH := $(EXPORT_DIR)/$(APP_NAME).app
+APP_ZIP := $(RELEASE_DIR)/$(APP_NAME).zip
+DMG_STAGING := $(RELEASE_DIR)/dmg
+DMG_PATH := $(DIST_DIR)/$(APP_NAME)-$(VERSION).dmg
+
+CODE_SIGN_IDENTITY ?= Developer ID Application
 
 .PHONY: install
 install:
@@ -34,6 +45,43 @@ build-debug: generate-xcodeproj
 build-release: generate-xcodeproj
 	$(XCODEBUILD) -configuration Release ARCHS=arm64 CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
 
+.PHONY: release
+release:
+	@test -n "$(VERSION)" || { echo "VERSION is required (make release VERSION=x.y.z)"; exit 1; }
+	@test -n "$(NOTARY_KEY)" || { echo "NOTARY_KEY is not set — add it to .env"; exit 1; }
+	@test -n "$(NOTARY_KEY_ID)" || { echo "NOTARY_KEY_ID is not set — add it to .env"; exit 1; }
+	@test -n "$(NOTARY_ISSUER)" || { echo "NOTARY_ISSUER is not set — add it to .env"; exit 1; }
+	@test -n "$(SPARKLE_ED_KEY)" || { echo "SPARKLE_ED_KEY is not set — add it to .env"; exit 1; }
+	rm -rf $(RELEASE_DIR) $(DIST_DIR)
+	mkdir -p $(RELEASE_DIR) $(DIST_DIR)
+	tuist install
+	TUIST_VERSION=$(VERSION) TUIST_CODE_SIGN_IDENTITY="$(CODE_SIGN_IDENTITY)" tuist generate --no-open
+	tuist xcodebuild archive \
+		-workspace $(APP_NAME).xcworkspace \
+		-scheme $(APP_NAME) \
+		-configuration Release \
+		-destination 'generic/platform=macOS' \
+		-archivePath $(ARCHIVE_PATH) \
+		ARCHS=arm64 ONLY_ACTIVE_ARCH=NO
+	cp ExportOptions.plist $(EXPORT_OPTIONS)
+	/usr/libexec/PlistBuddy -c "Add :teamID string $(TUIST_DEVELOPMENT_TEAM)" $(EXPORT_OPTIONS)
+	xcodebuild -exportArchive \
+		-archivePath $(ARCHIVE_PATH) \
+		-exportPath $(EXPORT_DIR) \
+		-exportOptionsPlist $(EXPORT_OPTIONS)
+	ditto -c -k --keepParent $(APP_PATH) $(APP_ZIP)
+	xcrun notarytool submit $(APP_ZIP) --key "$(NOTARY_KEY)" --key-id $(NOTARY_KEY_ID) --issuer $(NOTARY_ISSUER) --wait
+	xcrun stapler staple $(APP_PATH)
+	rm -rf $(DMG_STAGING)
+	mkdir -p $(DMG_STAGING)
+	cp -R $(APP_PATH) $(DMG_STAGING)/
+	ln -s /Applications $(DMG_STAGING)/Applications
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDZO $(DMG_PATH)
+	codesign --force --timestamp --sign "$(CODE_SIGN_IDENTITY)" $(DMG_PATH)
+	xcrun notarytool submit $(DMG_PATH) --key "$(NOTARY_KEY)" --key-id $(NOTARY_KEY_ID) --issuer $(NOTARY_ISSUER) --wait
+	xcrun stapler staple $(DMG_PATH)
+	generate_appcast $(DIST_DIR) --ed-key-file "$(SPARKLE_ED_KEY)" --download-url-prefix https://github.com/troytft/freesper/releases/download/v$(VERSION)/
+
 .PHONY: stop
 stop:
 	@if pkill -x $(APP_NAME); then \
@@ -46,14 +94,6 @@ stop:
 .PHONY: dev
 dev: build-debug stop
 	open "$(DERIVED_DATA)/Build/Products/Debug/$(APP_NAME).app"
-
-.PHONY: preview-build
-preview-build: build-release
-	rm -rf "$(DIST_DIR)" && mkdir -p "$(DIST_DIR)"
-	ditto -c -k --keepParent \
-		"$(DERIVED_DATA)/Build/Products/Release/$(APP_NAME).app" \
-		"$(DIST_DIR)/$(APP_NAME).zip"
-	@echo "ready: $(DIST_DIR)/$(APP_NAME).zip"
 
 .PHONY: logs
 logs:
