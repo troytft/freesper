@@ -24,7 +24,6 @@ struct AccessibilityStep: View {
     if readiness.accessibility != .granted {
       VStack(spacing: 8) {
         Button("Open System Settings") {
-          AccessibilityPermission.ensure(prompt: true, log: log)
           SystemSettings.open(.accessibility)
         }
         .controlSize(.large)
