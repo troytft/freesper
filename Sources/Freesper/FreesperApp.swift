@@ -38,8 +38,7 @@ struct FreesperApp: App {
         preferences: graph.preferences,
         modelManager: graph.modelManager,
         lastTranscriptStore: graph.lastTranscriptStore,
-        activationPolicy: graph.activationPolicy,
-        log: graph.log
+        activationPolicy: graph.activationPolicy
       )
     }
     .windowResizability(.contentSize)

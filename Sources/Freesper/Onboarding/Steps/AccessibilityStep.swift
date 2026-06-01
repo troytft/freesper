@@ -1,9 +1,7 @@
-import OSLog
 import SwiftUI
 
 struct AccessibilityStep: View {
   let readiness: AppReadiness
-  let log: Logger
 
   var body: some View {
     OnboardingStepChrome(
@@ -24,7 +22,6 @@ struct AccessibilityStep: View {
     if readiness.accessibility != .granted {
       VStack(spacing: 8) {
         Button("Open System Settings") {
-          AccessibilityPermission.ensure(prompt: true, log: log)
           SystemSettings.open(.accessibility)
         }
         .controlSize(.large)
