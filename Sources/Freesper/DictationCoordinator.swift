@@ -47,6 +47,10 @@ final class DictationCoordinator {
       NSSound.beep()
       return
     }
+    guard readiness.model.isReady else {
+      log.info("[dictation] model not ready, ignoring start")
+      return
+    }
     log.info("[dictation] start")
     phase = .recording
     audio.startIfNeeded()

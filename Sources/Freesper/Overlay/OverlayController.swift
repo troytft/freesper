@@ -50,6 +50,11 @@ final class OverlayController {
     syncPanel()
   }
 
+  func setPreparing() {
+    stopLevelPolling()
+    model.phase = .preparing
+  }
+
   func setListening() {
     model.phase = .listening
     syncWaveform()

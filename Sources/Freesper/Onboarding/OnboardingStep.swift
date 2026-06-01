@@ -19,7 +19,7 @@ enum OnboardingStep: Int, CaseIterable {
     case .accessibility:
       return readiness.accessibility == .granted
     case .model:
-      return readiness.model.isReady
+      return readiness.model.isDownloaded
     }
   }
 }

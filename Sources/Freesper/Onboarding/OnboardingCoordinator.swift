@@ -15,6 +15,12 @@ final class OnboardingCoordinator {
   @ObservationIgnored var dismissWindow: (() -> Void)?
   @ObservationIgnored var onComplete: (() -> Void)?
 
+  @ObservationIgnored private var preparingDebounce: Task<Void, Never>?
+
+  /// Warm starts finish prewarm well under this; debouncing keeps the
+  /// preparing pill from flashing for those.
+  private static let preparingOverlayDelay = Duration.milliseconds(300)
+
   init(
     readiness: AppReadiness,
     preferences: Preferences,
@@ -27,9 +33,13 @@ final class OnboardingCoordinator {
     self.activationPolicy = activationPolicy
   }
 
+  var needsOnboarding: Bool {
+    !preferences.hasCompletedOnboarding || firstNotSatisfied() != nil
+  }
+
   func start() {
     syncOverlay()
-    if !preferences.hasCompletedOnboarding || !readiness.isReady {
+    if needsOnboarding {
       present(desiredStep())
     } else {
       onComplete?()
@@ -66,6 +76,9 @@ final class OnboardingCoordinator {
   private func observeReadiness() {
     observe { [weak self] in
       _ = self?.readiness.isReady
+      // `isReady` short-circuits before reading `model` when a permission is
+      // missing, so touch `model` directly to catch entry into `.preparing`.
+      _ = self?.readiness.model
     } onChange: { [weak self] in
       self?.handleReadinessChange()
     }
@@ -76,7 +89,7 @@ final class OnboardingCoordinator {
   // which would feel like a haunting.
   private func handleReadinessChange() {
     syncOverlay()
-    guard !readiness.isReady else { return }
+    guard needsOnboarding else { return }
     if isWindowVisible {
       snapBackIfNeeded()
     } else if !preferences.hasCompletedOnboarding {
@@ -121,10 +134,40 @@ final class OnboardingCoordinator {
   }
 
   private func syncOverlay() {
-    if readiness.isReady {
+    guard preferences.hasCompletedOnboarding else {
+      // During onboarding the preparing feedback lives on the window, so the
+      // floating overlay stays gated on full readiness, never on `.preparing`.
+      cancelPreparingDebounce()
+      if readiness.isReady { overlay.start() } else { overlay.stop() }
+      return
+    }
+    switch readiness.model {
+    case .preparing:
+      schedulePreparingOverlay()
+    case .ready:
+      cancelPreparingDebounce()
+      overlay.setIdle()
       overlay.start()
-    } else {
+    default:
+      cancelPreparingDebounce()
       overlay.stop()
     }
+  }
+
+  private func schedulePreparingOverlay() {
+    guard preparingDebounce == nil else { return }
+    preparingDebounce = Task { @MainActor [weak self] in
+      try? await Task.sleep(for: Self.preparingOverlayDelay)
+      guard let self, !Task.isCancelled, case .preparing = self.readiness.model
+      else { return }
+      self.overlay.start()
+      self.overlay.setPreparing()
+      self.preparingDebounce = nil
+    }
+  }
+
+  private func cancelPreparingDebounce() {
+    preparingDebounce?.cancel()
+    preparingDebounce = nil
   }
 }

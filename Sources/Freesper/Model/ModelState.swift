@@ -3,11 +3,19 @@ import Foundation
 enum ModelState {
   case notDownloaded
   case downloading(progress: Double)
+  case preparing
   case ready
   case failed(Error)
 
   var isReady: Bool {
     if case .ready = self { return true }
     return false
+  }
+
+  var isDownloaded: Bool {
+    switch self {
+    case .preparing, .ready: return true
+    case .notDownloaded, .downloading, .failed: return false
+    }
   }
 }

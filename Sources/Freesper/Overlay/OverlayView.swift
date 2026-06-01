@@ -16,6 +16,7 @@ struct OverlayView: View {
     case .idle: OverlayMetrics.idleCapsuleSize
     case .hint, .listening: OverlayMetrics.expandedCapsuleSize
     case .transcribing: OverlayMetrics.transcribingCapsuleSize
+    case .preparing: OverlayMetrics.preparingCapsuleSize
     }
   }
   private var fillOpacity: Double { isExpanded ? 0.95 : 0.5 }
@@ -81,7 +82,9 @@ struct OverlayView: View {
       WaveformView(bars: model.barIntensities)
         .padding(.horizontal, 16)
     case .transcribing:
-      TranscribingSpinner()
+      Spinner()
+    case .preparing:
+      PreparingRow()
     case .idle:
       // Unreachable: `displayedPhase` only ever holds non-idle values.
       EmptyView()
@@ -110,7 +113,23 @@ private struct HintRow: View {
   }
 }
 
-private struct TranscribingSpinner: View {
+private struct PreparingRow: View {
+  var body: some View {
+    HStack(spacing: 8) {
+      Spinner()
+      Text("Preparing model…")
+        .foregroundColor(.white)
+        .font(.system(size: 12))
+        .lineLimit(1)
+        // Same intrinsic-size pin as HintRow: keeps the text from re-truncating
+        // each frame while the capsule resize animates.
+        .fixedSize()
+    }
+    .padding(.horizontal, 14)
+  }
+}
+
+private struct Spinner: View {
   @State private var rotation = 0.0
 
   var body: some View {

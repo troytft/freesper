@@ -85,10 +85,10 @@ private struct MenuBarLabel: View {
         graph.onboardingCoordinator.dismissWindow = { dismissWindow(id: OnboardingWindow.id) }
         graph.mainWindowCoordinator.bind { openWindow(id: MainWindow.id) }
         appDelegate.onReopen = {
-          if graph.preferences.hasCompletedOnboarding && graph.readiness.isReady {
-            graph.mainWindowCoordinator.open(.settings)
-          } else {
+          if graph.onboardingCoordinator.needsOnboarding {
             graph.onboardingCoordinator.openFromMenu()
+          } else {
+            graph.mainWindowCoordinator.open(.settings)
           }
         }
         graph.runOnce()
