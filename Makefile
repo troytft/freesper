@@ -52,10 +52,15 @@ release:
 	@test -n "$(NOTARY_KEY_ID)" || { echo "NOTARY_KEY_ID is not set — add it to .env"; exit 1; }
 	@test -n "$(NOTARY_ISSUER)" || { echo "NOTARY_ISSUER is not set — add it to .env"; exit 1; }
 	@test -n "$(SPARKLE_ED_KEY)" || { echo "SPARKLE_ED_KEY is not set — add it to .env"; exit 1; }
-	rm -rf $(RELEASE_DIR) $(DIST_DIR)
-	mkdir -p $(RELEASE_DIR) $(DIST_DIR)
-	tuist install
-	TUIST_VERSION=$(VERSION) TUIST_CODE_SIGN_IDENTITY="$(CODE_SIGN_IDENTITY)" tuist generate --no-open
+	$(MAKE) _release-archive
+	$(MAKE) _release-app
+	$(MAKE) _release-dmg
+	$(MAKE) _release-appcast
+
+.PHONY: _release-archive
+_release-archive:
+	rm -rf $(ARCHIVE_PATH)
+	TUIST_VERSION=$(VERSION) TUIST_CODE_SIGN_IDENTITY="$(CODE_SIGN_IDENTITY)" $(MAKE) generate-xcodeproj
 	tuist xcodebuild archive \
 		-workspace $(APP_NAME).xcworkspace \
 		-scheme $(APP_NAME) \
@@ -63,6 +68,10 @@ release:
 		-destination 'generic/platform=macOS' \
 		-archivePath $(ARCHIVE_PATH) \
 		ARCHS=arm64 ONLY_ACTIVE_ARCH=NO
+
+.PHONY: _release-app
+_release-app:
+	rm -rf $(EXPORT_DIR) $(EXPORT_OPTIONS) $(APP_ZIP)
 	cp ExportOptions.plist $(EXPORT_OPTIONS)
 	/usr/libexec/PlistBuddy -c "Add :teamID string $(TUIST_DEVELOPMENT_TEAM)" $(EXPORT_OPTIONS)
 	xcodebuild -exportArchive \
@@ -72,14 +81,20 @@ release:
 	ditto -c -k --keepParent $(APP_PATH) $(APP_ZIP)
 	xcrun notarytool submit $(APP_ZIP) --key "$(NOTARY_KEY)" --key-id $(NOTARY_KEY_ID) --issuer $(NOTARY_ISSUER) --wait
 	xcrun stapler staple $(APP_PATH)
-	rm -rf $(DMG_STAGING)
-	mkdir -p $(DMG_STAGING)
+
+.PHONY: _release-dmg
+_release-dmg:
+	rm -rf $(DIST_DIR) $(DMG_STAGING)
+	mkdir -p $(DIST_DIR) $(DMG_STAGING)
 	cp -R $(APP_PATH) $(DMG_STAGING)/
 	ln -s /Applications $(DMG_STAGING)/Applications
 	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDZO $(DMG_PATH)
 	codesign --force --timestamp --sign "$(CODE_SIGN_IDENTITY)" $(DMG_PATH)
 	xcrun notarytool submit $(DMG_PATH) --key "$(NOTARY_KEY)" --key-id $(NOTARY_KEY_ID) --issuer $(NOTARY_ISSUER) --wait
 	xcrun stapler staple $(DMG_PATH)
+
+.PHONY: _release-appcast
+_release-appcast:
 	generate_appcast $(DIST_DIR) --ed-key-file "$(SPARKLE_ED_KEY)" --download-url-prefix https://github.com/troytft/freesper/releases/download/v$(VERSION)/
 
 .PHONY: stop
