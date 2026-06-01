@@ -1,4 +1,3 @@
-import OSLog
 import SwiftUI
 
 struct OnboardingView: View {
@@ -8,7 +7,6 @@ struct OnboardingView: View {
   let modelManager: ModelManager
   let lastTranscriptStore: LastTranscriptStore
   let activationPolicy: ActivationPolicyController
-  let log: Logger
 
   private static let contentSize = CGSize(width: 580, height: 520)
 
@@ -43,7 +41,7 @@ struct OnboardingView: View {
     case .microphone:
       MicrophoneStep(readiness: readiness)
     case .accessibility:
-      AccessibilityStep(readiness: readiness, log: log)
+      AccessibilityStep(readiness: readiness)
     case .model:
       ModelStep(readiness: readiness, modelManager: modelManager)
     case .hotkey:

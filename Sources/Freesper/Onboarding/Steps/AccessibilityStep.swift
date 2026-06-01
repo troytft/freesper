@@ -1,9 +1,7 @@
-import OSLog
 import SwiftUI
 
 struct AccessibilityStep: View {
   let readiness: AppReadiness
-  let log: Logger
 
   var body: some View {
     OnboardingStepChrome(
