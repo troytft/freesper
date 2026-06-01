@@ -7,6 +7,15 @@ struct Hotkey: Equatable, @unchecked Sendable {
   /// `OptionSet` but isn't formally `Sendable`, so the enclosing struct is
   /// `@unchecked Sendable`.
   let modifiers: CGEventFlags
+  /// For bare-modifier hotkeys that must tell left from right (or Fn): the
+  /// physical key whose `flagsChanged` we match. `nil` matches on flags alone.
+  let modifierKeyCode: CGKeyCode?
+
+  init(keyCode: CGKeyCode?, modifiers: CGEventFlags, modifierKeyCode: CGKeyCode? = nil) {
+    self.keyCode = keyCode
+    self.modifiers = modifiers
+    self.modifierKeyCode = modifierKeyCode
+  }
 
   /// The five modifier bits we care about. Anything else (numericPad, help,
   /// caps lock, …) is masked out before comparisons so cosmetic state on
