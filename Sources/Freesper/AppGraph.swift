@@ -108,6 +108,9 @@ final class AppGraph {
     }
 
     bootstrap()
+    onboardingCoordinator.onComplete = { [weak self] in
+      self?.updater.start()
+    }
     onboardingCoordinator.start()
   }
 
