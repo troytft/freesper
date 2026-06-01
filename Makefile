@@ -97,6 +97,18 @@ _release-dmg:
 _release-appcast:
 	generate_appcast $(DIST_DIR) --ed-key-file "$(SPARKLE_ED_KEY)" --download-url-prefix https://github.com/troytft/freesper/releases/download/v$(VERSION)/
 
+.PHONY: tag-patch
+tag-patch:
+	@swift scripts/create-tag.swift patch
+
+.PHONY: tag-minor
+tag-minor:
+	@swift scripts/create-tag.swift minor
+
+.PHONY: tag-major
+tag-major:
+	@swift scripts/create-tag.swift major
+
 .PHONY: stop
 stop:
 	@if pkill -x $(APP_NAME); then \
