@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 jobs:
   release:
@@ -62,8 +61,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+          gh release upload "$GITHUB_REF_NAME" \
             "dist/Freesper-$VERSION.dmg" \
-            dist/appcast.xml
+            dist/appcast.xml \
+            --clobber
