@@ -5,19 +5,32 @@ import Sparkle
 final class UpdaterController: NSObject {
   private let activationPolicy: ActivationPolicyController
   private var controller: SPUStandardUpdaterController!
+  private var hasStarted = false
 
   init(activationPolicy: ActivationPolicyController) {
     self.activationPolicy = activationPolicy
     super.init()
     controller = SPUStandardUpdaterController(
-      startingUpdater: true,
-      updaterDelegate: nil,
+      startingUpdater: false,
+      updaterDelegate: self,
       userDriverDelegate: self
     )
   }
 
+  func start() {
+    guard !hasStarted else { return }
+    hasStarted = true
+    controller.startUpdater()
+  }
+
   func checkForUpdates() {
     controller.checkForUpdates(nil)
+  }
+}
+
+extension UpdaterController: SPUUpdaterDelegate {
+  func updaterShouldPromptForPermissionToCheck(forUpdates updater: SPUUpdater) -> Bool {
+    true
   }
 }
 

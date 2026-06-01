@@ -13,6 +13,7 @@ final class OnboardingCoordinator {
 
   @ObservationIgnored var openWindow: (() -> Void)?
   @ObservationIgnored var dismissWindow: (() -> Void)?
+  @ObservationIgnored var onComplete: (() -> Void)?
 
   init(
     readiness: AppReadiness,
@@ -30,6 +31,8 @@ final class OnboardingCoordinator {
     syncOverlay()
     if !preferences.hasCompletedOnboarding || !readiness.isReady {
       present(desiredStep())
+    } else {
+      onComplete?()
     }
     observeReadiness()
   }
@@ -49,6 +52,7 @@ final class OnboardingCoordinator {
   func finish() {
     preferences.hasCompletedOnboarding = true
     dismissWindow?()
+    onComplete?()
   }
 
   func windowDidAppear() {
