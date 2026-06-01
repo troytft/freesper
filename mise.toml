@@ -5,3 +5,4 @@ experimental = true
 tuist = "4.192.3"
 "spm:apple/swift-format" = "602.0.0"
 periphery = "3.7.4"
+"github:sparkle-project/Sparkle" = { version = "2.9.2", exe = "generate_appcast" }

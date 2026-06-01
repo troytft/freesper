@@ -62,6 +62,7 @@ private struct MenuBarMenu: View {
       Button("Continue Setup…") { graph.onboardingCoordinator.openFromMenu() }
     }
     Button("About") { graph.mainWindowCoordinator.open(.about) }
+    Button("Check for Updates…") { graph.updater.checkForUpdates() }
     Divider()
     Button("Quit") { NSApplication.shared.terminate(nil) }
       .keyboardShortcut("q")

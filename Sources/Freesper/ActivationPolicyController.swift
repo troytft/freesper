@@ -6,6 +6,7 @@ final class ActivationPolicyController {
     case userPreference
     case onboarding
     case mainWindow
+    case softwareUpdate
   }
 
   private var reasons: Set<Reason> = []
