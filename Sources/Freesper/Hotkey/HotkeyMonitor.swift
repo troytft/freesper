@@ -6,9 +6,10 @@ import OSLog
 /// Threading: the tap callback runs on whatever run loop the source is added
 /// to. We attach to `CFRunLoopGetMain()`, so callbacks land on the main thread
 /// and we can stay `@MainActor` end-to-end without locks. The matcher and
-/// state mutation happen synchronously inside the callback — the only thing
-/// the callback emits is the user's `onDown`/`onUp` closures, which run on
-/// main as well.
+/// state mutation happen synchronously inside the callback; the user's
+/// `onDown`/`onUp` closures are dispatched onto the main actor via `Task` so
+/// their work doesn't run inside the tap callback (a slow callback trips the
+/// tap, now that it's a `.defaultTap`).
 @MainActor
 final class HotkeyMonitor {
   private let log: Logger
