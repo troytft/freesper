@@ -83,6 +83,7 @@
               Text("Hint").tag(OverlayState.Phase.hint)
               Text("Listening").tag(OverlayState.Phase.listening)
               Text("Transcribing").tag(OverlayState.Phase.transcribing)
+              Text("Preparing").tag(OverlayState.Phase.preparing)
             }
             .pickerStyle(.segmented)
             .labelsHidden()

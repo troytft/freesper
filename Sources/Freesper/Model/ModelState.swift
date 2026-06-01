@@ -3,6 +3,7 @@ import Foundation
 enum ModelState {
   case notDownloaded
   case downloading(progress: Double)
+  case preparing
   case ready
   case failed(Error)
 

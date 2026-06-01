@@ -34,6 +34,14 @@ struct ModelStep: View {
       progressBar(value: 0, label: "Starting…")
     case .downloading(let progress):
       progressBar(value: progress, label: percent(progress))
+    case .preparing:
+      HStack(spacing: 10) {
+        ProgressView()
+          .controlSize(.small)
+        Text("Preparing…")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+      }
     case .failed(let error):
       Text(error.localizedDescription)
         .font(.callout)

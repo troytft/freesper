@@ -8,15 +8,18 @@ import OSLog
 final class ModelManager {
   private let log: Logger
   private let readiness: AppReadiness
+  private let prewarm: () async -> Void
   private var task: Task<Void, Never>?
+  private var prepareTask: Task<Void, Never>?
 
   /// Parakeet TDT 0.6B v3 — the same model the app has always used. If this
   /// changes, the on-disk folder name changes too (it's the HF repo's basename),
   /// so any old payload is naturally bypassed by `modelsExist(at:)` returning false.
   private static let asrVersion: AsrModelVersion = .v3
 
-  init(readiness: AppReadiness, log: Logger) {
+  init(readiness: AppReadiness, prewarm: @escaping () async -> Void, log: Logger) {
     self.readiness = readiness
+    self.prewarm = prewarm
     self.log = log
   }
 
@@ -28,7 +31,7 @@ final class ModelManager {
   /// `nil` if the application support directory is unreachable (sandbox
   /// failure, hard-broken filesystem); callers surface that as a model-state
   /// failure instead of crashing.
-  var modelDirectory: URL? {
+  static func resolveModelDirectory(log: Logger) -> URL? {
     do {
       let base = try FileManager.default.url(
         for: .applicationSupportDirectory,
@@ -38,7 +41,7 @@ final class ModelManager {
       )
       // FluidAudio's `Repo.folderName` is internal; the safe public path is the
       // last component of its default cache dir (`parakeet-tdt-0.6b-v3-coreml`).
-      let folderName = AsrModels.defaultCacheDirectory(for: Self.asrVersion).lastPathComponent
+      let folderName = AsrModels.defaultCacheDirectory(for: asrVersion).lastPathComponent
       return
         base
         .appendingPathComponent("Freesper", isDirectory: true)
@@ -53,13 +56,13 @@ final class ModelManager {
   }
 
   func verifyOnLaunch() {
-    guard let directory = modelDirectory else {
+    guard let directory = Self.resolveModelDirectory(log: log) else {
       readiness.model = .failed(ModelError.applicationSupportUnavailable)
       return
     }
     if AsrModels.modelsExist(at: directory, version: Self.asrVersion) {
       log.info("[model] verified on launch at \(directory.path, privacy: .public)")
-      readiness.model = .ready
+      prepareThenReady()
       return
     }
     log.info("[model] not present, will download")
@@ -74,7 +77,7 @@ final class ModelManager {
 
   private func startDownload() {
     if task != nil { return }
-    guard let directory = modelDirectory else {
+    guard let directory = Self.resolveModelDirectory(log: log) else {
       readiness.model = .failed(ModelError.applicationSupportUnavailable)
       return
     }
@@ -115,7 +118,21 @@ final class ModelManager {
   private func finishSuccess() {
     log.info("[model] download complete")
     task = nil
-    readiness.model = .ready
+    prepareThenReady()
+  }
+
+  /// Eagerly compile the models (`.preparing`) before `.ready` so the first
+  /// transcription doesn't pay the ~20 s CoreML compilation cost. Prewarm
+  /// failure is non-fatal: the files exist, so we still go `.ready` and let the
+  /// first `transcribe` reload lazily.
+  private func prepareThenReady() {
+    readiness.model = .preparing
+    prepareTask = Task { @MainActor [weak self] in
+      await self?.prewarm()
+      guard let self, !Task.isCancelled else { return }
+      self.readiness.model = .ready
+      self.prepareTask = nil
+    }
   }
 
   private func finishCancelled() {

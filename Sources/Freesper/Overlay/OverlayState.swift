@@ -8,6 +8,7 @@ final class OverlayState {
     case hint
     case listening
     case transcribing
+    case preparing
   }
 
   var phase: Phase = .idle
@@ -28,6 +29,7 @@ enum OverlayMetrics {
   static let idleCapsuleSize = CGSize(width: 48, height: 6)
   static let expandedCapsuleSize = CGSize(width: 140, height: 34)
   static let transcribingCapsuleSize = CGSize(width: 34, height: 34)
+  static let preparingCapsuleSize = CGSize(width: 170, height: 34)
 
   /// Tracking rect that fires `onEnterIdleZone`. Larger than the visible
   /// pill so the cursor catches the pill on a casual mouseover.

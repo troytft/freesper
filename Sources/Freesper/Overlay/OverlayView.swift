@@ -16,6 +16,7 @@ struct OverlayView: View {
     case .idle: OverlayMetrics.idleCapsuleSize
     case .hint, .listening: OverlayMetrics.expandedCapsuleSize
     case .transcribing: OverlayMetrics.transcribingCapsuleSize
+    case .preparing: OverlayMetrics.preparingCapsuleSize
     }
   }
   private var fillOpacity: Double { isExpanded ? 0.95 : 0.5 }
@@ -82,6 +83,8 @@ struct OverlayView: View {
         .padding(.horizontal, 16)
     case .transcribing:
       TranscribingSpinner()
+    case .preparing:
+      PreparingRow()
     case .idle:
       // Unreachable: `displayedPhase` only ever holds non-idle values.
       EmptyView()
@@ -104,6 +107,24 @@ private struct HintRow: View {
         .lineLimit(1)
         // Keep text at intrinsic size during the capsule shrink animation;
         // without it SwiftUI re-runs truncation each frame and the text wobbles.
+        .fixedSize()
+    }
+    .padding(.horizontal, 14)
+  }
+}
+
+private struct PreparingRow: View {
+  var body: some View {
+    HStack(spacing: 8) {
+      ProgressView()
+        .controlSize(.small)
+        .tint(.white)
+      Text("Preparing model…")
+        .foregroundColor(.white)
+        .font(.system(size: 12))
+        .lineLimit(1)
+        // Same intrinsic-size pin as HintRow: keeps the text from re-truncating
+        // each frame while the capsule resize animates.
         .fixedSize()
     }
     .padding(.horizontal, 14)

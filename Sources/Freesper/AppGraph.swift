@@ -33,14 +33,18 @@ final class AppGraph {
     let preferences = Preferences()
     let deviceCatalog = AudioDeviceCatalog(log: log)
     let activationPolicy = ActivationPolicyController()
-    let modelManager = ModelManager(readiness: readiness, log: log)
     let audio = AudioCaptureService(
       preferences: preferences,
       deviceCatalog: deviceCatalog,
       log: log
     )
     let transcription = TranscriptionService(
-      modelDirectory: modelManager.modelDirectory,
+      modelDirectory: ModelManager.resolveModelDirectory(log: log),
+      log: log
+    )
+    let modelManager = ModelManager(
+      readiness: readiness,
+      prewarm: { await transcription.prewarm() },
       log: log
     )
     let overlay = OverlayController(audio: audio, preferences: preferences, log: log)
