@@ -33,9 +33,13 @@ final class OnboardingCoordinator {
     self.activationPolicy = activationPolicy
   }
 
+  var needsOnboarding: Bool {
+    !preferences.hasCompletedOnboarding || firstNotSatisfied() != nil
+  }
+
   func start() {
     syncOverlay()
-    if !preferences.hasCompletedOnboarding || !readiness.isReady {
+    if needsOnboarding {
       present(desiredStep())
     } else {
       onComplete?()
@@ -85,7 +89,7 @@ final class OnboardingCoordinator {
   // which would feel like a haunting.
   private func handleReadinessChange() {
     syncOverlay()
-    guard !readiness.isReady else { return }
+    guard needsOnboarding else { return }
     if isWindowVisible {
       snapBackIfNeeded()
     } else if !preferences.hasCompletedOnboarding {

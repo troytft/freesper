@@ -82,7 +82,7 @@ struct OverlayView: View {
       WaveformView(bars: model.barIntensities)
         .padding(.horizontal, 16)
     case .transcribing:
-      TranscribingSpinner()
+      Spinner()
     case .preparing:
       PreparingRow()
     case .idle:
@@ -116,9 +116,7 @@ private struct HintRow: View {
 private struct PreparingRow: View {
   var body: some View {
     HStack(spacing: 8) {
-      ProgressView()
-        .controlSize(.small)
-        .tint(.white)
+      Spinner()
       Text("Preparing model…")
         .foregroundColor(.white)
         .font(.system(size: 12))
@@ -131,7 +129,7 @@ private struct PreparingRow: View {
   }
 }
 
-private struct TranscribingSpinner: View {
+private struct Spinner: View {
   @State private var rotation = 0.0
 
   var body: some View {

@@ -11,4 +11,11 @@ enum ModelState {
     if case .ready = self { return true }
     return false
   }
+
+  var isDownloaded: Bool {
+    switch self {
+    case .preparing, .ready: return true
+    case .notDownloaded, .downloading, .failed: return false
+    }
+  }
 }
