@@ -6,9 +6,10 @@ import OSLog
 /// Threading: the tap callback runs on whatever run loop the source is added
 /// to. We attach to `CFRunLoopGetMain()`, so callbacks land on the main thread
 /// and we can stay `@MainActor` end-to-end without locks. The matcher and
-/// state mutation happen synchronously inside the callback — the only thing
-/// the callback emits is the user's `onDown`/`onUp` closures, which run on
-/// main as well.
+/// state mutation happen synchronously inside the callback; the user's
+/// `onDown`/`onUp` closures are dispatched onto the main actor via `Task` so
+/// their work doesn't run inside the tap callback (a slow callback trips the
+/// tap, now that it's a `.defaultTap`).
 @MainActor
 final class HotkeyMonitor {
   private let log: Logger
@@ -43,7 +44,7 @@ final class HotkeyMonitor {
       let port = CGEvent.tapCreate(
         tap: .cgSessionEventTap,
         place: .headInsertEventTap,
-        options: .listenOnly,
+        options: .defaultTap,
         eventsOfInterest: mask,
         callback: HotkeyMonitor.tapCallback,
         userInfo: refcon
@@ -78,12 +79,12 @@ final class HotkeyMonitor {
     // arrive on the main thread. Asserting isolation lets us call into
     // @MainActor state without hopping.
     return MainActor.assumeIsolated {
-      monitor.handle(type: type, event: event)
-      return Unmanaged.passUnretained(event)
+      let swallow = monitor.handle(type: type, event: event)
+      return swallow ? nil : Unmanaged.passUnretained(event)
     }
   }
 
-  private func handle(type: CGEventType, event: CGEvent) {
+  private func handle(type: CGEventType, event: CGEvent) -> Bool {
     // Tap can be disabled by the system if a callback takes too long or
     // if user input "trips" it. Re-enable so we don't silently die.
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
@@ -91,60 +92,68 @@ final class HotkeyMonitor {
         log.warning("[hotkey] tap disabled (\(type.rawValue, privacy: .public)), re-enabling")
         CGEvent.tapEnable(tap: tap, enable: true)
       }
-      return
+      return false
     }
 
-    guard let hotkey else { return }
+    guard let hotkey else { return false }
     let flags = event.flags.intersection(Hotkey.relevantMask)
 
     switch type {
     case .flagsChanged:
-      guard hotkey.isBareModifier else { return }
-      // Bare-modifier hotkey: trigger on transition into/out of a state
-      // where every required modifier is held. Other modifiers being
-      // held alongside are tolerated (so Fn+anything still counts as
-      // "Fn pressed").
+      guard hotkey.isBareModifier else { return false }
+      if let target = hotkey.modifierKeyCode {
+        let changedKey = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        guard changedKey == target else { return false }
+      }
       let nowPressed = flags.contains(hotkey.modifiers)
       if nowPressed && !isPressed {
         isPressed = true
         log.info("[hotkey] down (bare modifier)")
-        onDown?()
+        emitDown()
       } else if !nowPressed && isPressed {
         isPressed = false
         log.info("[hotkey] up (bare modifier)")
-        onUp?()
+        emitUp()
       }
+      return false
 
     case .keyDown:
       guard !hotkey.isBareModifier,
         let target = hotkey.keyCode,
         CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)) == target,
         flags == hotkey.modifiers
-      else { return }
-      // OS sends repeated keyDown while held; first one wins, the rest
-      // are debounced.
+      else { return false }
       if !isPressed {
         isPressed = true
         log.info("[hotkey] down")
-        onDown?()
+        emitDown()
       }
+      return true
 
     case .keyUp:
       guard !hotkey.isBareModifier,
         let target = hotkey.keyCode,
-        CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)) == target
-      else { return }
+        CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)) == target,
+        isPressed
+      else { return false }
       // Don't gate keyUp on flag matching: if the user releases the
       // main key while still holding a modifier, we still want to fire
       // the up edge. The "are we currently pressed" guard is enough.
-      if isPressed {
-        isPressed = false
-        log.info("[hotkey] up")
-        onUp?()
-      }
+      isPressed = false
+      log.info("[hotkey] up")
+      emitUp()
+      return true
 
     default:
-      break
+      return false
     }
+  }
+
+  private func emitDown() {
+    Task { @MainActor [weak self] in self?.onDown?() }
+  }
+
+  private func emitUp() {
+    Task { @MainActor [weak self] in self?.onUp?() }
   }
 }
