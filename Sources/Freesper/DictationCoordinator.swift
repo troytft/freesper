@@ -86,6 +86,19 @@ final class DictationCoordinator {
     }
   }
 
+  func cancel() {
+    guard phase == .recording else { return }
+    log.info("[dictation] cancel")
+    teardownRecording()
+  }
+
+  private func teardownRecording() {
+    _ = audio.endRecording()
+    audio.stopEngine()
+    phase = .idle
+    overlay.setIdle()
+  }
+
   private func transcribeAndDeliver(samples: [Float]) async {
     do {
       let text = try await transcription.transcribe(samples: samples)
@@ -123,10 +136,10 @@ final class DictationCoordinator {
     transcribeTask?.cancel()
     transcribeTask = nil
     if phase == .recording {
-      _ = audio.endRecording()
-      audio.stopEngine()
+      teardownRecording()
+    } else {
+      phase = .idle
+      overlay.setIdle()
     }
-    phase = .idle
-    overlay.setIdle()
   }
 }

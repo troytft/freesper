@@ -30,6 +30,7 @@ final class HotkeyController {
   func register() {
     monitor.onDown = { [weak self] in self?.handleDown() }
     monitor.onUp = { [weak self] in self?.handleUp() }
+    monitor.onCancel = { [weak self] in self?.handleCancel() }
     applyPreset()
     startTapIfAllowed()
     observePreferences()
@@ -59,6 +60,10 @@ final class HotkeyController {
 
   private func handleUp() {
     dictation.stop()
+  }
+
+  private func handleCancel() {
+    dictation.cancel()
   }
 
   // MARK: - Observation
