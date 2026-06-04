@@ -18,9 +18,12 @@ final class HotkeyMonitor {
   var onDown: (() -> Void)?
   /// Fired exactly once per genuine release.
   var onUp: (() -> Void)?
+  /// Fired when another key joins a bare-modifier press, making it a shortcut.
+  var onCancel: (() -> Void)?
 
   private var hotkey: Hotkey?
   private var isPressed = false
+  private var chordAborted = false
 
   private var tap: CFMachPort?
 
@@ -68,6 +71,7 @@ final class HotkeyMonitor {
   func update(hotkey: Hotkey) {
     self.hotkey = hotkey
     self.isPressed = false
+    self.chordAborted = false
   }
 
   // MARK: - Callback dispatch
@@ -108,18 +112,30 @@ final class HotkeyMonitor {
       let nowPressed = flags.contains(hotkey.modifiers)
       if nowPressed && !isPressed {
         isPressed = true
+        chordAborted = false
         log.info("[hotkey] down (bare modifier)")
         emitDown()
       } else if !nowPressed && isPressed {
         isPressed = false
-        log.info("[hotkey] up (bare modifier)")
-        emitUp()
+        let wasChord = chordAborted
+        chordAborted = false
+        if !wasChord {
+          log.info("[hotkey] up (bare modifier)")
+          emitUp()
+        }
       }
       return false
 
     case .keyDown:
-      guard !hotkey.isBareModifier,
-        let target = hotkey.keyCode,
+      if hotkey.isBareModifier {
+        if isPressed && !chordAborted {
+          chordAborted = true
+          log.info("[hotkey] chord detected, cancelling")
+          emitCancel()
+        }
+        return false
+      }
+      guard let target = hotkey.keyCode,
         CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)) == target,
         flags == hotkey.modifiers
       else { return false }
@@ -155,5 +171,9 @@ final class HotkeyMonitor {
 
   private func emitUp() {
     Task { @MainActor [weak self] in self?.onUp?() }
+  }
+
+  private func emitCancel() {
+    Task { @MainActor [weak self] in self?.onCancel?() }
   }
 }
