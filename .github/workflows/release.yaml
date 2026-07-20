@@ -48,6 +48,7 @@ jobs:
       - name: Build, sign, notarize and package
         env:
           TUIST_DEVELOPMENT_TEAM: ${{ vars.DEVELOPMENT_TEAM }}
+          TUIST_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
           NOTARY_ISSUER: ${{ secrets.NOTARY_API_ISSUER_ID }}
         run: |
