@@ -29,6 +29,7 @@ final class AppGraph {
 
   init() {
     let log = self.log
+    CrashReporting.startIfConfigured(log: log)
     let readiness = AppReadiness(log: log)
     let preferences = Preferences()
     let deviceCatalog = AudioDeviceCatalog(log: log)

@@ -1,5 +1,6 @@
 #if DEBUG
 
+  import Sentry
   import SwiftUI
 
   struct DeveloperView: View {
@@ -7,6 +8,7 @@
 
     enum Tool: String, CaseIterable, Identifiable {
       case overlay = "Overlay"
+      case diagnostics = "Diagnostics"
 
       var id: Self { self }
     }
@@ -29,10 +31,37 @@
           switch tool {
           case .overlay:
             OverlayPlayground()
+          case .diagnostics:
+            DiagnosticsPlayground()
           }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
+    }
+  }
+
+  private struct DiagnosticsPlayground: View {
+    var body: some View {
+      Form {
+        Section("Crash reporting") {
+          LabeledContent("Sentry", value: SentrySDK.isEnabled ? "Enabled" : "Disabled")
+          if !SentrySDK.isEnabled {
+            Text("Set TUIST_SENTRY_DSN in .env and rebuild to enable.")
+              .foregroundStyle(.secondary)
+          }
+          Button("Send Test Event") {
+            SentrySDK.capture(message: "Test event from developer tools")
+          }
+          .disabled(!SentrySDK.isEnabled)
+          Button("Crash", role: .destructive) {
+            SentrySDK.crash()
+          }
+          .disabled(!SentrySDK.isEnabled)
+          Text("The crash report is uploaded on the next launch.")
+            .foregroundStyle(.secondary)
+        }
+      }
+      .formStyle(.grouped)
     }
   }
 

@@ -44,6 +44,8 @@ final class AudioCaptureService: @unchecked Sendable {
   /// Mirrors what's actually wired into the input unit. Guarded by
   /// `stateLock` because `startEngine` may run off the main actor.
   private var currentInputDeviceID: AudioDeviceID?
+  private var shouldBeRunning = false
+  private var configChangeObservation: (any NSObjectProtocol)?
 
   /// ~30 ms windows at 16 kHz produce ~33 RMS values per second — fine for
   /// driving the overlay waveform and cheap enough to do every callback.
@@ -61,6 +63,21 @@ final class AudioCaptureService: @unchecked Sendable {
     self.deviceObservation = deviceCatalog.observeChanges { [weak self] in
       self?.reconfigureForCurrentSelection()
     }
+    self.configChangeObservation = NotificationCenter.default.addObserver(
+      forName: .AVAudioEngineConfigurationChange,
+      object: engine,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.handleConfigurationChange()
+      }
+    }
+  }
+
+  deinit {
+    if let configChangeObservation {
+      NotificationCenter.default.removeObserver(configChangeObservation)
+    }
   }
 
   /// Kept out of `init` so the composition root controls when observation
@@ -76,6 +93,7 @@ final class AudioCaptureService: @unchecked Sendable {
 
   func startIfNeeded() {
     guard MicrophonePermission.check() == .granted else { return }
+    stateLock.withLock { shouldBeRunning = true }
     guard !engine.isRunning else { return }
     do {
       try startEngine()
@@ -85,11 +103,12 @@ final class AudioCaptureService: @unchecked Sendable {
   }
 
   func stopEngine() {
-    guard engine.isRunning else { return }
-    engine.stop()
+    stateLock.withLock { shouldBeRunning = false }
+    if engine.isRunning { engine.stop() }
+    // The engine can stop itself on a device change; a leftover tap crashes the next install.
     engine.inputNode.removeTap(onBus: 0)
-    converter = nil
     stateLock.withLock {
+      converter = nil
       rmsLevels.removeAll()
       currentInputDeviceID = nil
     }
@@ -100,6 +119,7 @@ final class AudioCaptureService: @unchecked Sendable {
     guard !engine.isRunning else { return }
 
     let input = engine.inputNode
+    input.removeTap(onBus: 0)
 
     // Bind to the user's chosen input device *before* querying the input
     // format — switching devices changes the format, and `prepare`/`start`
@@ -112,6 +132,16 @@ final class AudioCaptureService: @unchecked Sendable {
     let inputFormat = input.outputFormat(forBus: 0)
     log.info("Audio input format: \(String(describing: inputFormat), privacy: .public)")
 
+    guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+      throw NSError(
+        domain: "Freesper.Audio",
+        code: 2,
+        userInfo: [
+          NSLocalizedDescriptionKey: "Input device reports invalid format \(inputFormat)"
+        ]
+      )
+    }
+
     guard let conv = AVAudioConverter(from: inputFormat, to: targetFormat) else {
       throw NSError(
         domain: "Freesper.Audio",
@@ -122,9 +152,10 @@ final class AudioCaptureService: @unchecked Sendable {
         ]
       )
     }
-    converter = conv
+    stateLock.withLock { converter = conv }
 
-    input.installTap(onBus: 0, bufferSize: 4_096, format: inputFormat) { [weak self] buffer, _ in
+    // nil format follows the node's live format; a stale snapshot crashes the install.
+    input.installTap(onBus: 0, bufferSize: 4_096, format: nil) { [weak self] buffer, _ in
       self?.process(inputBuffer: buffer)
     }
     try engine.start()
@@ -165,15 +196,21 @@ final class AudioCaptureService: @unchecked Sendable {
     if preferences.microphoneUID != nil && target == nil {
       log.info("Selected mic is not connected, falling back to system default")
     }
+    // While no session is active there's nothing to rebuild — the next
+    // `startEngine()` will pick up `pendingInputDeviceID`.
     let needsRebuild: Bool = stateLock.withLock {
       pendingInputDeviceID = target
-      return target != currentInputDeviceID
+      return shouldBeRunning && target != currentInputDeviceID
     }
     guard needsRebuild else { return }
-    // While the engine is idle (no active session), there's nothing to
-    // rebuild — the next `startEngine()` will pick up `pendingInputDeviceID`.
-    guard engine.isRunning else { return }
     log.info("Mic selection changed → rebuilding engine")
+    rebuildEngine()
+  }
+
+  @MainActor
+  private func handleConfigurationChange() {
+    guard stateLock.withLock({ shouldBeRunning }) else { return }
+    log.info("Audio engine configuration changed → rebuilding engine")
     rebuildEngine()
   }
 
@@ -182,10 +219,10 @@ final class AudioCaptureService: @unchecked Sendable {
     let input = engine.inputNode
     if engine.isRunning { engine.stop() }
     input.removeTap(onBus: 0)
-    converter = nil
     // Drop any buffered audio so the next recording doesn't carry samples
     // captured at the previous device's format.
     stateLock.withLock {
+      converter = nil
       recording = nil
       rmsLevels.removeAll()
     }
@@ -228,8 +265,16 @@ final class AudioCaptureService: @unchecked Sendable {
     init(buffer: AVAudioPCMBuffer) { self.buffer = buffer }
   }
 
+  private func converterCompatible(with format: AVAudioFormat) -> AVAudioConverter? {
+    stateLock.withLock {
+      if let converter, converter.inputFormat == format { return converter }
+      converter = AVAudioConverter(from: format, to: targetFormat)
+      return converter
+    }
+  }
+
   private func process(inputBuffer: AVAudioPCMBuffer) {
-    guard let converter else { return }
+    guard let converter = converterCompatible(with: inputBuffer.format) else { return }
 
     let ratio = targetFormat.sampleRate / inputBuffer.format.sampleRate
     let outCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio + 1_024)

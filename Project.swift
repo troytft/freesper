@@ -1,6 +1,7 @@
 import ProjectDescription
 
 let version = Environment.version.getString(default: "0.0.0")
+let sentryDSN = Environment.sentryDSN.getString(default: "")
 let developmentTeam = Environment.developmentTeam.getString(default: "")
 let codeSignIdentity = Environment.codeSignIdentity.getString(default: "Apple Development")
 let codeSigningAllowed = Environment.codeSigningAllowed.getString(default: "YES")
@@ -41,7 +42,13 @@ let project = Project(
             product: .app,
             bundleId: "me.troytft.freesper",
             deploymentTargets: .macOS("14.0"),
-            infoPlist: .extendingDefault(with: [
+            // Not .extendingDefault: it injects NSMainStoryboardFile, fatal under Sentry's NSException handler.
+            infoPlist: .dictionary([
+                "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
+                "CFBundleExecutable": "$(EXECUTABLE_NAME)",
+                "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+                "CFBundleInfoDictionaryVersion": "6.0",
+                "CFBundlePackageType": "APPL",
                 "CFBundleName": "Freesper",
                 "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
                 "CFBundleShortVersionString": .string(version),
@@ -49,9 +56,11 @@ let project = Project(
                 "CFBundleIconName": "AppIcon",
                 "LSMinimumSystemVersion": "14.0",
                 "LSUIElement": true,
+                "NSPrincipalClass": "NSApplication",
                 "NSMicrophoneUsageDescription": "Freesper uses the microphone to capture speech and convert it to text.",
                 "SUFeedURL": "$(SPARKLE_FEED_URL)",
                 "SUPublicEDKey": "5nJWhGe7diYZtxoGYGYlfc0DrFINJGfmWK/tC3Wq4ys=",
+                "SentryDSN": .string(sentryDSN),
             ]),
             sources: ["Sources/Freesper/**"],
             resources: ["AppIcon.icon", "Assets.xcassets"],
@@ -62,6 +71,7 @@ let project = Project(
             dependencies: [
                 .external(name: "FluidAudio"),
                 .external(name: "Sparkle"),
+                .external(name: "Sentry"),
             ],
             settings: .settings(
                 base: [
