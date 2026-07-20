@@ -74,6 +74,12 @@ final class AudioCaptureService: @unchecked Sendable {
     }
   }
 
+  deinit {
+    if let configChangeObservation {
+      NotificationCenter.default.removeObserver(configChangeObservation)
+    }
+  }
+
   /// Kept out of `init` so the composition root controls when observation
   /// begins.
   @MainActor
