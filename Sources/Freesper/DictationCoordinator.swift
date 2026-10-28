@@ -51,9 +51,14 @@ final class DictationCoordinator {
       log.info("[dictation] model not ready, ignoring start")
       return
     }
+    guard audio.startIfNeeded() else {
+      audio.stopEngine()
+      log.info("[dictation] audio engine failed to start, ignoring start")
+      NSSound.beep()
+      return
+    }
     log.info("[dictation] start")
     phase = .recording
-    audio.startIfNeeded()
     audio.beginRecording()
     overlay.setListening()
   }
