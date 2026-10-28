@@ -23,7 +23,8 @@ final class AudioCaptureService: @unchecked Sendable {
   private let deviceCatalog: AudioDeviceCatalog
   private var deviceObservation: AudioDeviceCatalog.ObservationToken?
 
-  private let engine = AVAudioEngine()
+  private var engine = AVAudioEngine()
+  private var engineDeviceID: AudioDeviceID?
   private let targetFormat = AVAudioFormat(
     commonFormat: .pcmFormatFloat32,
     sampleRate: 16_000,
@@ -63,15 +64,8 @@ final class AudioCaptureService: @unchecked Sendable {
     self.deviceObservation = deviceCatalog.observeChanges { [weak self] in
       self?.reconfigureForCurrentSelection()
     }
-    self.configChangeObservation = NotificationCenter.default.addObserver(
-      forName: .AVAudioEngineConfigurationChange,
-      object: engine,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.handleConfigurationChange()
-      }
-    }
+    self.engineDeviceID = effectiveInputDeviceID()
+    observeConfigurationChanges(of: engine)
   }
 
   deinit {
@@ -91,14 +85,18 @@ final class AudioCaptureService: @unchecked Sendable {
     }
   }
 
-  func startIfNeeded() {
-    guard MicrophonePermission.check() == .granted else { return }
+  @discardableResult
+  func startIfNeeded() -> Bool {
+    guard MicrophonePermission.check() == .granted else { return false }
     stateLock.withLock { shouldBeRunning = true }
-    guard !engine.isRunning else { return }
+    guard !engine.isRunning else { return true }
     do {
       try startEngine()
+      return true
     } catch {
+      stateLock.withLock { shouldBeRunning = false }
       log.error("Audio engine start failed: \(error.localizedDescription, privacy: .public)")
+      return false
     }
   }
 
@@ -118,26 +116,38 @@ final class AudioCaptureService: @unchecked Sendable {
   func startEngine() throws {
     guard !engine.isRunning else { return }
 
+    var formats = prepareInput()
+    if !formats.sampleRatesMatch {
+      log.error(
+        "Input format \(String(describing: formats.output), privacy: .public) doesn't match hardware format \(String(describing: formats.hardware), privacy: .public) and no device change was observed"
+      )
+      replaceEngine(reason: "stale input format")
+      formats = prepareInput()
+    }
+    // installTap raises an NSException on this mismatch, which Swift can't catch and which can corrupt Swift concurrency state.
+    guard formats.sampleRatesMatch else {
+      throw NSError(
+        domain: "Freesper.Audio",
+        code: 3,
+        userInfo: [
+          NSLocalizedDescriptionKey:
+            "Input format \(formats.output) doesn't match hardware format \(formats.hardware)"
+        ]
+      )
+    }
     let input = engine.inputNode
-    input.removeTap(onBus: 0)
-
-    // Bind to the user's chosen input device *before* querying the input
-    // format — switching devices changes the format, and `prepare`/`start`
-    // both lock the current configuration in.
-    let target = stateLock.withLock { pendingInputDeviceID }
-    let bound = applyInputDevice(target, on: input)
-    stateLock.withLock { currentInputDeviceID = bound }
-
-    engine.prepare()
-    let inputFormat = input.outputFormat(forBus: 0)
+    let inputFormat = formats.output
     log.info("Audio input format: \(String(describing: inputFormat), privacy: .public)")
 
-    guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+    guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
+      formats.hardware.channelCount > 0
+    else {
       throw NSError(
         domain: "Freesper.Audio",
         code: 2,
         userInfo: [
-          NSLocalizedDescriptionKey: "Input device reports invalid format \(inputFormat)"
+          NSLocalizedDescriptionKey:
+            "Input device reports invalid format \(inputFormat), hardware \(formats.hardware)"
         ]
       )
     }
@@ -160,6 +170,57 @@ final class AudioCaptureService: @unchecked Sendable {
     }
     try engine.start()
     log.info("Audio engine started")
+  }
+
+  private struct InputFormats {
+    let output: AVAudioFormat
+    let hardware: AVAudioFormat
+
+    var sampleRatesMatch: Bool { output.sampleRate == hardware.sampleRate }
+  }
+
+  private func prepareInput() -> InputFormats {
+    let input = engine.inputNode
+    input.removeTap(onBus: 0)
+
+    // Bind to the user's chosen input device *before* querying the input
+    // format — switching devices changes the format, and `prepare`/`start`
+    // both lock the current configuration in.
+    let target = stateLock.withLock { pendingInputDeviceID }
+    let bound = applyInputDevice(target, on: input)
+    stateLock.withLock { currentInputDeviceID = bound }
+
+    engine.prepare()
+    return InputFormats(output: input.outputFormat(forBus: 0), hardware: input.inputFormat(forBus: 0))
+  }
+
+  private func replaceEngine(reason: String) {
+    engine = AVAudioEngine()
+    // Pays the ~0.5 s input unit setup now rather than on the next hotkey press.
+    _ = engine.inputNode
+    engineDeviceID = effectiveInputDeviceID()
+    observeConfigurationChanges(of: engine)
+    log.info("Audio engine replaced: \(reason, privacy: .public)")
+  }
+
+  private func effectiveInputDeviceID() -> AudioDeviceID? {
+    stateLock.withLock { pendingInputDeviceID } ?? AudioDeviceCatalog.defaultInputDeviceID()
+  }
+
+  private func observeConfigurationChanges(of engine: AVAudioEngine) {
+    if let configChangeObservation {
+      NotificationCenter.default.removeObserver(configChangeObservation)
+    }
+    configChangeObservation = NotificationCenter.default.addObserver(
+      forName: .AVAudioEngineConfigurationChange,
+      object: engine,
+      queue: .main
+    ) { [weak self, engineID = ObjectIdentifier(engine)] _ in
+      Task { @MainActor [weak self] in
+        guard let self, ObjectIdentifier(self.engine) == engineID else { return }
+        self.handleConfigurationChange()
+      }
+    }
   }
 
   @MainActor
@@ -196,37 +257,35 @@ final class AudioCaptureService: @unchecked Sendable {
     if preferences.microphoneUID != nil && target == nil {
       log.info("Selected mic is not connected, falling back to system default")
     }
-    // While no session is active there's nothing to rebuild — the next
-    // `startEngine()` will pick up `pendingInputDeviceID`.
-    let needsRebuild: Bool = stateLock.withLock {
+    let (isRecording, boundDeviceID) = stateLock.withLock {
       pendingInputDeviceID = target
-      return shouldBeRunning && target != currentInputDeviceID
+      return (shouldBeRunning, currentInputDeviceID)
     }
-    guard needsRebuild else { return }
-    log.info("Mic selection changed → rebuilding engine")
-    rebuildEngine()
+    if !isRecording {
+      guard effectiveInputDeviceID() != engineDeviceID else { return }
+      replaceEngine(reason: "input device changed")
+    } else if target != boundDeviceID {
+      log.info("Mic selection changed → restarting on a new engine")
+      haltEngine()
+      replaceEngine(reason: "mic selection changed")
+      startIfNeeded()
+    }
   }
 
   @MainActor
   private func handleConfigurationChange() {
     guard stateLock.withLock({ shouldBeRunning }) else { return }
-    log.info("Audio engine configuration changed → rebuilding engine")
-    rebuildEngine()
+    log.info("Audio engine configuration changed → restarting engine")
+    haltEngine()
+    startIfNeeded()
   }
 
   @MainActor
-  private func rebuildEngine() {
+  private func haltEngine() {
     let input = engine.inputNode
     if engine.isRunning { engine.stop() }
     input.removeTap(onBus: 0)
-    // Drop any buffered audio so the next recording doesn't carry samples
-    // captured at the previous device's format.
-    stateLock.withLock {
-      converter = nil
-      recording = nil
-      rmsLevels.removeAll()
-    }
-    startIfNeeded()
+    stateLock.withLock { converter = nil }
   }
 
   func beginRecording() {

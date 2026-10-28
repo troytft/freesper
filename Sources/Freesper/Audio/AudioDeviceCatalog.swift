@@ -101,22 +101,25 @@ final class AudioDeviceCatalog {
   // MARK: - Hot-plug
 
   private func installHotPlugListener() {
-    var address = Self.devicesAddress()
-    let status = AudioObjectAddPropertyListenerBlock(
-      AudioObjectID(kAudioObjectSystemObject),
-      &address,
-      DispatchQueue.main
-    ) { [weak self] _, _ in
-      Task { @MainActor [weak self] in
-        guard let self else { return }
-        self.refresh()
-        for observer in self.observerStorage.snapshot() {
-          observer()
+    for var address in [Self.devicesAddress(), Self.defaultInputAddress()] {
+      let status = AudioObjectAddPropertyListenerBlock(
+        AudioObjectID(kAudioObjectSystemObject),
+        &address,
+        DispatchQueue.main
+      ) { [weak self] _, _ in
+        Task { @MainActor [weak self] in
+          guard let self else { return }
+          self.refresh()
+          for observer in self.observerStorage.snapshot() {
+            observer()
+          }
         }
       }
-    }
-    if status != noErr {
-      log.error("Failed to install device list listener: \(status, privacy: .public)")
+      if status != noErr {
+        log.error(
+          "Failed to install device listener \(address.mSelector, privacy: .public): \(status, privacy: .public)"
+        )
+      }
     }
   }
 
@@ -128,6 +131,30 @@ final class AudioDeviceCatalog {
       mScope: kAudioObjectPropertyScopeGlobal,
       mElement: kAudioObjectPropertyElementMain
     )
+  }
+
+  nonisolated private static func defaultInputAddress() -> AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultInputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+  }
+
+  nonisolated static func defaultInputDeviceID() -> AudioDeviceID? {
+    var address = defaultInputAddress()
+    var id = AudioDeviceID(kAudioObjectUnknown)
+    var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+    let status = AudioObjectGetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &address,
+      0,
+      nil,
+      &size,
+      &id
+    )
+    guard status == noErr, id != kAudioObjectUnknown else { return nil }
+    return id
   }
 
   private func refresh() {
