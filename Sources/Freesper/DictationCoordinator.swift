@@ -52,6 +52,7 @@ final class DictationCoordinator {
       return
     }
     guard audio.startIfNeeded() else {
+      audio.stopEngine()
       log.info("[dictation] audio engine failed to start, ignoring start")
       NSSound.beep()
       return

@@ -42,9 +42,6 @@ final class AudioCaptureService: @unchecked Sendable {
   /// preferences or the device list change; read by `startEngine` from
   /// whatever thread happens to be starting the engine.
   private var pendingInputDeviceID: AudioDeviceID?
-  /// Mirrors what's actually wired into the input unit. Guarded by
-  /// `stateLock` because `startEngine` may run off the main actor.
-  private var currentInputDeviceID: AudioDeviceID?
   private var shouldBeRunning = false
   private var configChangeObservation: (any NSObjectProtocol)?
 
@@ -94,7 +91,6 @@ final class AudioCaptureService: @unchecked Sendable {
       try startEngine()
       return true
     } catch {
-      stateLock.withLock { shouldBeRunning = false }
       log.error("Audio engine start failed: \(error.localizedDescription, privacy: .public)")
       return false
     }
@@ -108,7 +104,6 @@ final class AudioCaptureService: @unchecked Sendable {
     stateLock.withLock {
       converter = nil
       rmsLevels.removeAll()
-      currentInputDeviceID = nil
     }
     log.info("Audio engine stopped")
   }
@@ -186,9 +181,7 @@ final class AudioCaptureService: @unchecked Sendable {
     // Bind to the user's chosen input device *before* querying the input
     // format — switching devices changes the format, and `prepare`/`start`
     // both lock the current configuration in.
-    let target = stateLock.withLock { pendingInputDeviceID }
-    let bound = applyInputDevice(target, on: input)
-    stateLock.withLock { currentInputDeviceID = bound }
+    applyInputDevice(stateLock.withLock { pendingInputDeviceID }, on: input)
 
     engine.prepare()
     return InputFormats(output: input.outputFormat(forBus: 0), hardware: input.inputFormat(forBus: 0))
@@ -229,10 +222,8 @@ final class AudioCaptureService: @unchecked Sendable {
     return catalog.deviceID(forUID: uid)
   }
 
-  private func applyInputDevice(_ deviceID: AudioDeviceID?, on inputNode: AVAudioInputNode)
-    -> AudioDeviceID?
-  {
-    guard let deviceID, let unit = inputNode.audioUnit else { return nil }
+  private func applyInputDevice(_ deviceID: AudioDeviceID?, on inputNode: AVAudioInputNode) {
+    guard let deviceID, let unit = inputNode.audioUnit else { return }
     var id = deviceID
     let status = AudioUnitSetProperty(
       unit,
@@ -246,9 +237,7 @@ final class AudioCaptureService: @unchecked Sendable {
       log.error(
         "Failed to bind input device \(deviceID, privacy: .public): status=\(status, privacy: .public)"
       )
-      return nil
     }
-    return deviceID
   }
 
   @MainActor
@@ -257,18 +246,17 @@ final class AudioCaptureService: @unchecked Sendable {
     if preferences.microphoneUID != nil && target == nil {
       log.info("Selected mic is not connected, falling back to system default")
     }
-    let (isRecording, boundDeviceID) = stateLock.withLock {
+    let isRecording = stateLock.withLock {
       pendingInputDeviceID = target
-      return (shouldBeRunning, currentInputDeviceID)
+      return shouldBeRunning
     }
-    if !isRecording {
-      guard effectiveInputDeviceID() != engineDeviceID else { return }
-      replaceEngine(reason: "input device changed")
-    } else if target != boundDeviceID {
-      log.info("Mic selection changed → restarting on a new engine")
+    guard effectiveInputDeviceID() != engineDeviceID else { return }
+    if isRecording {
       haltEngine()
-      replaceEngine(reason: "mic selection changed")
+      replaceEngine(reason: "input device changed during recording")
       startIfNeeded()
+    } else {
+      replaceEngine(reason: "input device changed")
     }
   }
 
