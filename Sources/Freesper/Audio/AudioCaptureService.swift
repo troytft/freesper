@@ -184,7 +184,8 @@ final class AudioCaptureService: @unchecked Sendable {
     applyInputDevice(stateLock.withLock { pendingInputDeviceID }, on: input)
 
     engine.prepare()
-    return InputFormats(output: input.outputFormat(forBus: 0), hardware: input.inputFormat(forBus: 0))
+    return InputFormats(
+      output: input.outputFormat(forBus: 0), hardware: input.inputFormat(forBus: 0))
   }
 
   private func replaceEngine(reason: String) {
