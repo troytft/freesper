@@ -41,6 +41,7 @@ final class AppGraph {
     )
     let transcription = TranscriptionService(
       modelDirectory: ModelManager.resolveModelDirectory(log: log),
+      modelVersion: ModelManager.asrVersion,
       log: log
     )
     let modelManager = ModelManager(

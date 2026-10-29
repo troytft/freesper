@@ -5,6 +5,7 @@ import OSLog
 actor TranscriptionService {
   private let log: Logger
   private let modelDirectory: URL?
+  private let modelVersion: AsrModelVersion
   private var manager: AsrManager?
   private var loadTask: Task<AsrManager, Error>?
 
@@ -12,8 +13,9 @@ actor TranscriptionService {
   /// from it. `nil` means the application support folder was unreachable —
   /// in practice the dictation pipeline is gated off via `AppReadiness.isReady`
   /// in that case, so `transcribe(...)` should never actually be called.
-  init(modelDirectory: URL?, log: Logger) {
+  init(modelDirectory: URL?, modelVersion: AsrModelVersion, log: Logger) {
     self.modelDirectory = modelDirectory
+    self.modelVersion = modelVersion
     self.log = log
   }
 
@@ -28,9 +30,10 @@ actor TranscriptionService {
       throw ModelError.applicationSupportUnavailable
     }
     let log = self.log
+    let modelVersion = self.modelVersion
     let task = Task {
-      log.info("Loading Parakeet TDT v3 models from \(modelDirectory.path, privacy: .public)…")
-      let models = try await AsrModels.load(from: modelDirectory, version: .v3)
+      log.info("Loading ASR models from \(modelDirectory.path, privacy: .public)…")
+      let models = try await AsrModels.load(from: modelDirectory, version: modelVersion)
       let manager = AsrManager()
       try await manager.loadModels(models)
       log.info("ASR models loaded")
