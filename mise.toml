@@ -3,7 +3,7 @@ experimental = true
 
 [tools]
 tuist = "4.192.3"
-"spm:apple/swift-format" = "602.0.0"
-periphery = "3.7.4"
+"spm:swiftlang/swift-format" = "604.0.0"
+periphery = "3.8.0"
 sentry-cli = "3.8.2"
 "github:sparkle-project/Sparkle" = "2.10.1"
