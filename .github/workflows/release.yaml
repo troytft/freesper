@@ -56,6 +56,13 @@ jobs:
           export SPARKLE_ED_KEY="$RUNNER_TEMP/sparkle_ed_key"
           make release VERSION="${GITHUB_REF_NAME#v}"
 
+      - name: Upload dSYMs to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        run: sentry-cli debug-files upload --include-sources --wait .build/release/Freesper.xcarchive/dSYMs
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
