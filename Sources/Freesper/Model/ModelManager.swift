@@ -12,10 +12,9 @@ final class ModelManager {
   private var task: Task<Void, Never>?
   private var prepareTask: Task<Void, Never>?
 
-  /// Parakeet TDT 0.6B v3 — the same model the app has always used. If this
-  /// changes, the on-disk folder name changes too (it's the HF repo's basename),
-  /// so any old payload is naturally bypassed by `modelsExist(at:)` returning false.
-  private static let asrVersion: AsrModelVersion = .v3
+  /// Changing this changes the on-disk folder (the HF repo's basename): the new
+  /// model is downloaded and `removeUnusedModels` deletes the previous folder.
+  static let asrVersion: AsrModelVersion = .ultra
 
   init(readiness: AppReadiness, prewarm: @escaping () async -> Void, log: Logger) {
     self.readiness = readiness
@@ -23,7 +22,7 @@ final class ModelManager {
     self.log = log
   }
 
-  /// `<appsupp>/Freesper/Models/parakeet-tdt-0.6b-v3-coreml/`. We pass this as
+  /// `<appsupp>/Freesper/Models/parakeet-ultra-coreml/`. We pass this as
   /// FluidAudio's `targetDir`; FluidAudio strips the last component and writes
   /// files under `<appsupp>/Freesper/Models/<repo.folderName>/`, which lands
   /// at the same location.
@@ -40,7 +39,7 @@ final class ModelManager {
         create: true
       )
       // FluidAudio's `Repo.folderName` is internal; the safe public path is the
-      // last component of its default cache dir (`parakeet-tdt-0.6b-v3-coreml`).
+      // last component of its default cache dir (`parakeet-ultra-coreml`).
       let folderName = AsrModels.defaultCacheDirectory(for: asrVersion).lastPathComponent
       return
         base
@@ -62,6 +61,7 @@ final class ModelManager {
     }
     if AsrModels.modelsExist(at: directory, version: Self.asrVersion) {
       log.info("[model] verified on launch at \(directory.path, privacy: .public)")
+      removeUnusedModels(keeping: directory)
       prepareThenReady()
       return
     }
@@ -87,7 +87,7 @@ final class ModelManager {
     task = Task.detached { [weak self] in
       // ProgressHandler is called on an unspecified queue; bounce through
       // the main actor before touching `readiness`.
-      let progressHandler: DownloadUtils.ProgressHandler = { [weak self] snapshot in
+      let progressHandler: ProgressHandler = { [weak self] snapshot in
         Task { await self?.publishProgress(snapshot.fractionCompleted) }
       }
       do {
@@ -97,7 +97,7 @@ final class ModelManager {
           progressHandler: progressHandler
         )
         try Task.checkCancellation()
-        await self?.finishSuccess()
+        await self?.finishSuccess(directory: directory)
       } catch is CancellationError {
         await self?.finishCancelled()
       } catch {
@@ -115,10 +115,43 @@ final class ModelManager {
     readiness.model = .downloading(progress: fraction)
   }
 
-  private func finishSuccess() {
+  private func finishSuccess(directory: URL) {
     log.info("[model] download complete")
     task = nil
+    removeUnusedModels(keeping: directory)
     prepareThenReady()
+  }
+
+  /// Everything else under `Models/` is deleted, so only re-downloadable
+  /// models may live there.
+  private func removeUnusedModels(keeping directory: URL) {
+    let log = self.log
+    Task.detached {
+      let fileManager = FileManager.default
+      let modelsRoot = directory.deletingLastPathComponent()
+      let entries: [URL]
+      do {
+        entries = try fileManager.contentsOfDirectory(
+          at: modelsRoot,
+          includingPropertiesForKeys: nil
+        )
+      } catch {
+        log.error(
+          "[model] couldn't list models folder: \(error.localizedDescription, privacy: .public)"
+        )
+        return
+      }
+      for entry in entries where entry.lastPathComponent != directory.lastPathComponent {
+        do {
+          try fileManager.removeItem(at: entry)
+          log.info("[model] removed unused \(entry.lastPathComponent, privacy: .public)")
+        } catch {
+          log.error(
+            "[model] couldn't remove \(entry.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+          )
+        }
+      }
+    }
   }
 
   /// Eagerly compile the models (`.preparing`) before `.ready` so the first

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 @preconcurrency import PackageDescription
 
 #if TUIST
@@ -12,7 +12,7 @@
 let package = Package(
     name: "OpenWhisper",
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio", exact: "0.14.4"),
+        .package(url: "https://github.com/FluidInference/FluidAudio", exact: "0.18.0", traits: []),
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
         .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.32.0"),
     ]
