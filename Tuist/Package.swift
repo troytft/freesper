@@ -14,6 +14,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio", exact: "0.14.4"),
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.22.0"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.32.0"),
     ]
 )
