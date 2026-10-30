@@ -7,7 +7,8 @@ import OSLog
 /// while the user is actually recording.
 ///
 /// `@unchecked Sendable` because the input tap callback runs on the audio
-/// render thread, not on any actor. Mutable state is guarded by `stateLock`.
+/// render thread, not on any actor. The engine lifecycle is isolated to the
+/// main actor; state shared with the tap callback is guarded by `stateLock`.
 final class AudioCaptureService: @unchecked Sendable {
   struct Recording {
     let samples: [Float]
@@ -23,8 +24,9 @@ final class AudioCaptureService: @unchecked Sendable {
   private let deviceCatalog: AudioDeviceCatalog
   private var deviceObservation: AudioDeviceCatalog.ObservationToken?
 
-  private var engine = AVAudioEngine()
-  private var engineDeviceID: AudioDeviceID?
+  @MainActor private var engine = AVAudioEngine()
+  @MainActor private var engineGeneration = 0
+  @MainActor private var engineDeviceID: AudioDeviceID?
   private let targetFormat = AVAudioFormat(
     commonFormat: .pcmFormatFloat32,
     sampleRate: 16_000,
@@ -38,9 +40,8 @@ final class AudioCaptureService: @unchecked Sendable {
   private var recording: [Float]?
   private var rmsLevels: [Float] = []
   /// Effective AudioDeviceID we want bound to the engine's input unit, or
-  /// `nil` to follow the system default. Resolved on the main actor whenever
-  /// preferences or the device list change; read by `startEngine` from
-  /// whatever thread happens to be starting the engine.
+  /// `nil` to follow the system default. Resolved whenever preferences or the
+  /// device list change.
   private var pendingInputDeviceID: AudioDeviceID?
   private var shouldBeRunning = false
   private var configChangeObservation: (any NSObjectProtocol)?
@@ -66,9 +67,7 @@ final class AudioCaptureService: @unchecked Sendable {
   }
 
   deinit {
-    if let configChangeObservation {
-      NotificationCenter.default.removeObserver(configChangeObservation)
-    }
+    stopObservingConfigurationChanges()
   }
 
   /// Kept out of `init` so the composition root controls when observation
@@ -82,6 +81,7 @@ final class AudioCaptureService: @unchecked Sendable {
     }
   }
 
+  @MainActor
   @discardableResult
   func startIfNeeded() -> Bool {
     guard MicrophonePermission.check() == .granted else { return false }
@@ -96,6 +96,7 @@ final class AudioCaptureService: @unchecked Sendable {
     }
   }
 
+  @MainActor
   func stopEngine() {
     stateLock.withLock { shouldBeRunning = false }
     if engine.isRunning { engine.stop() }
@@ -108,6 +109,7 @@ final class AudioCaptureService: @unchecked Sendable {
     log.info("Audio engine stopped")
   }
 
+  @MainActor
   func startEngine() throws {
     guard !engine.isRunning else { return }
 
@@ -160,7 +162,7 @@ final class AudioCaptureService: @unchecked Sendable {
     stateLock.withLock { converter = conv }
 
     // nil format follows the node's live format; a stale snapshot crashes the install.
-    input.installTap(onBus: 0, bufferSize: 4_096, format: nil) { [weak self] buffer, _ in
+    input.installTap(onBus: 0, bufferSize: 4_096, format: nil) { @Sendable [weak self] buffer, _ in
       self?.process(inputBuffer: buffer)
     }
     try engine.start()
@@ -174,6 +176,7 @@ final class AudioCaptureService: @unchecked Sendable {
     var sampleRatesMatch: Bool { output.sampleRate == hardware.sampleRate }
   }
 
+  @MainActor
   private func prepareInput() -> InputFormats {
     let input = engine.inputNode
     input.removeTap(onBus: 0)
@@ -188,8 +191,11 @@ final class AudioCaptureService: @unchecked Sendable {
       output: input.outputFormat(forBus: 0), hardware: input.inputFormat(forBus: 0))
   }
 
+  @MainActor
   private func replaceEngine(reason: String) {
+    stopObservingConfigurationChanges()
     engine = AVAudioEngine()
+    engineGeneration += 1
     // Pays the ~0.5 s input unit setup now rather than on the next hotkey press.
     _ = engine.inputNode
     engineDeviceID = effectiveInputDeviceID()
@@ -201,20 +207,25 @@ final class AudioCaptureService: @unchecked Sendable {
     stateLock.withLock { pendingInputDeviceID } ?? AudioDeviceCatalog.defaultInputDeviceID()
   }
 
+  @MainActor
   private func observeConfigurationChanges(of engine: AVAudioEngine) {
-    if let configChangeObservation {
-      NotificationCenter.default.removeObserver(configChangeObservation)
-    }
     configChangeObservation = NotificationCenter.default.addObserver(
       forName: .AVAudioEngineConfigurationChange,
       object: engine,
-      queue: .main
-    ) { [weak self, engineID = ObjectIdentifier(engine)] _ in
+      queue: nil
+    ) { [weak self, generation = engineGeneration] _ in
       Task { @MainActor [weak self] in
-        guard let self, ObjectIdentifier(self.engine) == engineID else { return }
+        guard let self, self.engineGeneration == generation else { return }
         self.handleConfigurationChange()
       }
     }
+  }
+
+  private func stopObservingConfigurationChanges() {
+    if let configChangeObservation {
+      NotificationCenter.default.removeObserver(configChangeObservation)
+    }
+    configChangeObservation = nil
   }
 
   @MainActor
