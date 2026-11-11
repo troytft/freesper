@@ -51,9 +51,9 @@ final class DictationCoordinator {
       log.info("[dictation] model not ready, ignoring start")
       return
     }
-    guard audio.startIfNeeded() else {
-      audio.stopEngine()
-      log.info("[dictation] audio engine failed to start, ignoring start")
+    guard audio.start() else {
+      audio.stop()
+      log.info("[dictation] audio capture failed to start, ignoring start")
       NSSound.beep()
       return
     }
@@ -70,8 +70,8 @@ final class DictationCoordinator {
     }
     log.info("[dictation] stop")
 
+    audio.stop()
     let recording = audio.endRecording()
-    audio.stopEngine()
     log.info(
       "[audio] captured samples=\(recording.samples.count, privacy: .public) duration=\(recording.durationSeconds, format: .fixed(precision: 2), privacy: .public)s rmsWindows=\(recording.rmsLevels.count, privacy: .public)"
     )
@@ -98,8 +98,8 @@ final class DictationCoordinator {
   }
 
   private func teardownRecording() {
+    audio.stop()
     _ = audio.endRecording()
-    audio.stopEngine()
     phase = .idle
     overlay.setIdle()
   }

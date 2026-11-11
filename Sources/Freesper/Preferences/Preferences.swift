@@ -7,8 +7,7 @@ final class Preferences {
   private let defaults: UserDefaults
 
   /// Core Audio device UID of the user's preferred microphone. `nil` means
-  /// "follow the system default input" — the same behaviour you'd get if
-  /// AVAudioEngine were left untouched.
+  /// "follow the system default input".
   var microphoneUID: String? {
     didSet {
       guard oldValue != microphoneUID else { return }
