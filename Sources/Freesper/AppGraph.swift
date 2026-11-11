@@ -37,6 +37,7 @@ final class AppGraph {
     let audio = AudioCaptureService(
       preferences: preferences,
       deviceCatalog: deviceCatalog,
+      inputUnit: AudioInputUnit(log: log),
       log: log
     )
     let transcription = TranscriptionService(
